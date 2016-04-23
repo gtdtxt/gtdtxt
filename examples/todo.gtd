@@ -1,0 +1,23 @@
+
+
+task: Take out the trash
+due: april 24, 2015 5pm
+tags: chores
+
+task: Buy more milk
+created: jan 11, 2016 5pm
+status: done
+
+task: Read this todo list
+priority: 9000
+
+task: Secret Project
+status: incubate
+project: incubate / super secret project
+contexts: hobby, fun
+
+task: World domination
+defer: forever
+tags: evil
+time: 2 hr
+
