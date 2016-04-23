@@ -40,9 +40,10 @@ ARGS:
 
 Inspired by [todotxt.com](http://todotxt.com/) and [ledger-cli.org](http://ledger-cli.org/).
 
-## Example
+## Examples
 
-See [reference-todo.gtd](./reference-todo.gtd) for an example.
+- [reference-todo.gtd](./reference-todo.gtd)
+- [examples/todo.gtd](./examples/todo.gtd)
 
 
 License
