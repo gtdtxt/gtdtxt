@@ -1121,6 +1121,16 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
 
     if !path_to_file.is_file() {
         // TODO: return Err(...)
+
+        match parent_file {
+            None => {},
+            Some(parent_file) => {
+                println!("In file: {}",
+                    parent_file
+                );
+            }
+        };
+
         println!("Path is not a file: {}",
             path_to_file_str
         );
