@@ -50,7 +50,7 @@ fn main() {
 
     let cmd_matches = App::new("gtdtxt")
         .version("v0.1.1 (semver.org)") // semver semantics
-        .about("CLI app to parse a human-readable text file to manage GTD workflow")
+        .about("CLI app to parse a human-readable text file for managing GTD workflow")
         .author("Alberto Leal <mailforalberto@gmail.com> (github.com/dashed)")
         .arg(
             Arg::with_name("hide-overdue")
