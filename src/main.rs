@@ -90,7 +90,7 @@ fn main() {
         .arg(
             Arg::with_name("validate")
             .help("Validate file and suppress any output.")
-            .short("t")
+            .short("q")
             .long("validate")
             .required(false)
         )
@@ -139,6 +139,38 @@ fn main() {
             })
         )
         .arg(
+            Arg::with_name("filter-by-tag")
+            .help("Filter using given tag.")
+            .short("t")
+            .long("filter-by-tag")
+            .required(false)
+            .takes_value(true)
+            .multiple(true)
+            .validator(|tag| {
+                let tag = tag.trim();
+                if tag.len() <= 0 {
+                    return Err(String::from("invalid tag"));
+                }
+                return Ok(());
+            })
+        )
+        .arg(
+            Arg::with_name("filter-by-context")
+            .help("Filter using given context.")
+            .short("c")
+            .long("filter-by-context")
+            .required(false)
+            .takes_value(true)
+            .multiple(true)
+            .validator(|context| {
+                let context = context.trim();
+                if context.len() <= 0 {
+                    return Err(String::from("invalid context"));
+                }
+                return Ok(());
+            })
+        )
+        .arg(
             Arg::with_name("path to gtdtxt file")
             .help("Path to gtdtxt file.")
             .required(true)
@@ -168,6 +200,50 @@ fn main() {
             match parse_only(|i| string_list(i, b'/'), project_path.as_bytes()) {
                 Ok(mut result) => {
                     journal.add_project_filter(&mut result);
+                },
+                Err(e) => {
+                    // TODO: refactor
+                    panic!("{:?}", e);
+                }
+            }
+        }
+    }
+
+    // tag filters
+    if let Some(tags) = cmd_matches.values_of("filter-by-tag") {
+
+        for tag in tags {
+
+            match parse_only(|i| string_list(i, b','), tag.as_bytes()) {
+                Ok(mut result) => {
+
+                    if result.len() > 0 {
+                        journal.filter_by_tags = true;
+                    }
+
+                    journal.add_tag_filters(result);
+                },
+                Err(e) => {
+                    // TODO: refactor
+                    panic!("{:?}", e);
+                }
+            }
+        }
+    }
+
+    // context filters
+    if let Some(contexts) = cmd_matches.values_of("filter-by-context") {
+
+        for context in contexts {
+
+            match parse_only(|i| string_list(i, b','), context.as_bytes()) {
+                Ok(mut result) => {
+
+                    if result.len() > 0 {
+                        journal.filter_by_contexts = true;
+                    }
+
+                    journal.add_context_filters(result);
                 },
                 Err(e) => {
                     // TODO: refactor
@@ -561,6 +637,26 @@ fn print_task(journal: &GTD, task: &Task) {
         task.task_block_range_end
     );
 
+    match task.tags {
+        None => {},
+        Some(ref tags) => {
+            println!("{:>11} {}",
+                "Tags:".bold().blue(),
+                tags.join(", ")
+            );
+        }
+    }
+
+    match task.contexts {
+        None => {},
+        Some(ref contexts) => {
+            println!("{:>11} {}",
+                "Contexts:".bold().blue(),
+                contexts.join(", ")
+            );
+        }
+    }
+
     match task.project {
         None => {},
         Some(ref project_path) => {
@@ -682,6 +778,8 @@ struct GTD {
     hide_incomplete: bool,
     project_filter: Tree,
     sort_overdue_by_priority: bool,
+    filter_by_tags: bool,
+    filter_by_contexts: bool,
 
     /* data */
 
@@ -689,6 +787,10 @@ struct GTD {
 
     // track files opened
     opened_files: HashSet<String>,
+
+    tags: HashSet<String>,
+
+    contexts: HashSet<String>,
 
     // lookup table for tasks
     tasks: HashMap<i32, Task>,
@@ -749,18 +851,55 @@ impl GTD {
             hide_incomplete: false,
             project_filter: HashMap::new(),
             sort_overdue_by_priority: false,
+            filter_by_tags: false,
+            filter_by_contexts: false,
 
             /* data */
 
             base_root: base_root,
-
             opened_files: HashSet::new(),
+
+            tags: HashSet::new(),
+            contexts: HashSet::new(),
+
             tasks: HashMap::new(),
             inbox: inbox,
             done: done,
             incubate: incubate,
             overdue: BTreeMap::new()
         }
+    }
+
+    fn add_tag_filters(&mut self, tags: Vec<String>) {
+        for tag in tags {
+            self.tags.insert(tag);
+        }
+    }
+
+    fn have_tags(&mut self, tags: &Vec<String>) -> bool {
+        for tag in tags {
+            if self.tags.contains(tag) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    fn add_context_filters(&mut self, contexts: Vec<String>) {
+        for context in contexts {
+            self.contexts.insert(context);
+        }
+    }
+
+    fn have_contexts(&mut self, contexts: &Vec<String>) -> bool {
+        for context in contexts {
+            if self.contexts.contains(context) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     fn add_project_filter(&mut self, path: &mut Vec<String>) {
@@ -903,6 +1042,32 @@ impl GTD {
     }
 
     fn should_hide_task(&mut self, task: &Task) -> bool {
+
+        if self.filter_by_tags {
+            match task.tags {
+                None => {
+                    return true;
+                },
+                Some(ref tags) => {
+                    if !self.have_tags(tags) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        if self.filter_by_contexts {
+            match task.contexts {
+                None => {
+                    return true;
+                },
+                Some(ref contexts) => {
+                    if !self.have_contexts(contexts) {
+                        return true;
+                    }
+                }
+            }
+        }
 
         if self.show_only_flagged {
             return !task.flag;
@@ -1248,8 +1413,6 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                             },
                             TaskBlock::Contexts(contexts) => {
 
-                                println!("contexts: '{:?}'", contexts);
-
                                 if contexts.len() > 0 {
                                     current_task.contexts = Some(contexts);
                                 } else {
@@ -1257,7 +1420,6 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                                 }
                             },
                             TaskBlock::Tags(tags) => {
-                                println!("tags: '{:?}'", tags);
 
                                 if tags.len() > 0 {
                                     current_task.tags = Some(tags);
@@ -1269,7 +1431,7 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                                 current_task.time += time;
                             },
                             TaskBlock::ID(id) => {
-                                println!("id: '{}'", id);
+                                // println!("id: '{}'", id);
                                 // TODO: complete
                             },
                             TaskBlock::Priority(priority) => {
