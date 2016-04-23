@@ -9,9 +9,9 @@ multi-line  comment
  */
 
 # include other files
-include: ./path/to/file
-include: path/to/file
-include: /path/to/file
+// include: ./path/to/file
+// include: path/to/file
+// include: /path/to/file
 
 
 # define tasks using `task:` keyword.

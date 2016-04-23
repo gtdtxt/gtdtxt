@@ -49,7 +49,7 @@ use chomp::ascii::{is_whitespace, decimal, digit};
 fn main() {
 
     let cmd_matches = App::new("gtdtxt")
-        .version("v0.2.0 (semver.org)") // semver semantics
+        .version("v0.2.1 (semver.org)") // semver semantics
         .about("CLI app to parse a human-readable text file for managing GTD workflow")
         .author("Alberto Leal <mailforalberto@gmail.com> (github.com/dashed)")
         .arg(
@@ -1501,7 +1501,7 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                 break;
             },
             Err(e) => {
-                println!("{:?}", e);
+                // println!("{:?}", e);
                 println!("Error parsing starting at line {}", journal.num_of_lines_parsed + 1);
                 process::exit(1);
             }
