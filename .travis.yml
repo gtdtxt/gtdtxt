@@ -1,0 +1,132 @@
+language: generic
+
+env:
+  global:
+    # This will be part of the release tarball
+    # the project name
+    - PROJECT_NAME=gtdtxt
+
+# AFAICT There are a few ways to set up the build jobs. This one is not the DRYest but I feel is the
+# easiest to reason about.
+# NOTE Make *sure* you don't remove a reference (&foo) if you are going to dereference it (*foo)
+matrix:
+  include:
+    # Stable channel
+    - os: linux
+      env: TARGET=armv7-unknown-linux-gnueabihf CHANNEL=stable
+      sudo: required
+      # Extra packages only for this job
+      addons:
+        apt:
+          packages: &armv7_unknown_linux_gnueabihf
+            # Cross compiler and cross compiled C libraries
+            - gcc-arm-linux-gnueabihf
+            - libc6-armhf-cross
+            - libc6-dev-armhf-cross
+            # Transparent emulation
+            - qemu-user-static
+            - binfmt-support
+    - os: osx
+      env: TARGET=i686-apple-darwin CHANNEL=stable
+    - os: linux
+      env: TARGET=i686-unknown-linux-gnu CHANNEL=stable
+      # Extra packages only for this job
+      addons:
+        apt:
+          packages: &i686_unknown_linux_gnu
+            # Cross compiler and cross compiled C libraries
+            - gcc-multilib
+    - os: osx
+      env: TARGET=x86_64-apple-darwin CHANNEL=stable
+    - os: linux
+      env: TARGET=x86_64-unknown-linux-gnu CHANNEL=stable
+    - os: linux
+      env: TARGET=x86_64-unknown-linux-musl CHANNEL=stable
+    # Beta channel
+    - os: linux
+      env: TARGET=armv7-unknown-linux-gnueabihf CHANNEL=beta
+      # sudo is needed for binfmt_misc, which is needed for transparent user qemu emulation
+      sudo: required
+      addons:
+        apt:
+          # Use the same packages the stable version uses
+          packages: *armv7_unknown_linux_gnueabihf
+    - os: osx
+      env: TARGET=i686-apple-darwin CHANNEL=beta
+    - os: linux
+      env: TARGET=i686-unknown-linux-gnu CHANNEL=beta
+      addons:
+        apt:
+          packages: *i686_unknown_linux_gnu
+    - os: osx
+      env: TARGET=x86_64-apple-darwin CHANNEL=beta
+    - os: linux
+      env: TARGET=x86_64-unknown-linux-gnu CHANNEL=beta
+    - os: linux
+      env: TARGET=x86_64-unknown-linux-musl CHANNEL=beta
+    # Nightly channel
+    - os: linux
+      env: TARGET=armv7-unknown-linux-gnueabihf CHANNEL=nightly
+      sudo: required
+      addons:
+        apt:
+          # Use the same packages the stable version uses
+          packages: *armv7_unknown_linux_gnueabihf
+    - os: osx
+      env: TARGET=i686-apple-darwin CHANNEL=nightly
+    - os: linux
+      env: TARGET=i686-unknown-linux-gnu CHANNEL=nightly
+      addons:
+        apt:
+          packages: *i686_unknown_linux_gnu
+    - os: osx
+      env: TARGET=x86_64-apple-darwin CHANNEL=nightly
+    - os: linux
+      env: TARGET=x86_64-unknown-linux-gnu CHANNEL=nightly
+    - os: linux
+      env: TARGET=x86_64-unknown-linux-musl CHANNEL=nightly
+
+before_install:
+  - export PATH="$PATH:$HOME/.cargo/bin"
+
+install:
+  - bash ci/install.sh
+
+script:
+  - bash ci/script.sh
+
+before_deploy:
+  - bash ci/before_deploy.sh
+
+deploy:
+  provider: releases
+  # TODO Regenerate this api_key for your project, this one won't work for you. Here's how:
+  # - Go to 'https://github.com/settings/tokens/new' and generate a Token with only the
+  # `public_repo` scope enabled
+  # - Call `travis encrypt $github_token` where $github_token is the token you got in the previous
+  # step and `travis` is the official Travis CI gem (see https://rubygems.org/gems/travis/)
+  # - Enter the "encrypted value" below
+  api_key:
+    secure: PeIFrWpAw+3nul4rc+P8NBap0OcdYi3q5Fq3SXoScsEKezvIGQypMw8dP4GCTIs+1LToGC7DzMHQuxclUKaRkNE1UnFz2Ym2NchLDP561fgWzzSTD+S0fHZTFaCJQaGsqLj+rdtar+u8MxAcC3ADssPG3LNTGlcroMrSpfU3X/HnI/htZIAI0h370NqOUvhSHPIx9VycWNExO7uu5C9pl7qogLQje8GnLwQ2P6z/uMhASvasO1kuY4TDj6xGvo+DQpSQlcUWy2fLo1kkj3xZrCNJ3vFtvT9QioU2cAVhhpokj7Fd6Og08fwtW0DY0070SQfP/Mp/deiO8HmqtVns66Z8YDiW8i8aV1wGGnbWGxw1GNlKuet3HZcbhHvJk//FMRsw9oKRaMXhTRSjyxEMPdwlbFhHsGVsmvLRBQAyojRo+CNKBwo3UDQUOPXkhnh3qgI0kI3e0GtZnXUxD5lgikAHNfZ/XKugnYcyx2RAxVJESZq5xxHT14s+H2+uK9Lkhi9mfNbe0dsbqksp2fuuihImE0rBRrperpG1L2sNlE/9b1qJLYE9Wnj55EE+l+vC8hExP81R/COvlz7nIDr6Hw4g8rWXlT3c+yhgC/TP9OX5iFTQpRuXyapWFVKpwsbSqYyybYyIs9iK2Dvt66xl+RLVyhW1agTAALEhJoY3zaU=
+  file: ${PROJECT_NAME}-${TRAVIS_TAG}-${TARGET}.tar.gz
+  # don't delete the artifacts from previous phases
+  skip_cleanup: true
+  # deploy when a new tag is pushed
+  on:
+    # channel to use to produce the release artifacts
+    # NOTE make sure you only release *once* per target
+    # TODO you may want to pick a different channel
+    condition: $CHANNEL = stable
+    tags: true
+
+branches:
+  only:
+    # Pushes and PR to the master branch
+    - master
+    # IMPORTANT Ruby regex to match tags. Required, or travis won't trigger deploys when a new tag
+    # is pushed. This regex matches semantic versions like v1.2.3-rc4+2016.02.22
+    - /^v\d+\.\d+\.\d+.*$/
+
+notifications:
+  email:
+    on_success: never
