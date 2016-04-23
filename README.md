@@ -1,9 +1,7 @@
 gtdtxt
 ======
 
-### WORK IN PROGRESS (WILL REBASE AT WILL)
-
-> CLI app to manage a human-readable GTD text file: `todo.gtdtxt` or `todo.gtd.txt`
+> CLI app to parse a human-readable text file to manage GTD workflow
 
 
 Inspired by [todotxt.com](http://todotxt.com/) and [ledger-cli.org](http://ledger-cli.org/).
