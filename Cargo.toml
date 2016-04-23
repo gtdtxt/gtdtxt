@@ -1,0 +1,24 @@
+[package]
+name = "gtdtxt"
+version = "0.1.0"
+authors = ["Alberto <mail4alberto@gmail.com>"]
+
+[profile.release]
+debug = true
+
+[dependencies.debug_unreachable]
+version = "0.1"
+
+[dependencies.chomp]
+git = "https://github.com/m4rw3r/chomp"
+rev = "c1287f2e7ee1558d50a8cab95e1bf900f5a47061"
+# version = "~0.2.5"
+
+[dependencies.chrono]
+version = "0.2"
+
+[dependencies.colored]
+version = "1.2"
+
+[dependencies.clap]
+version = "2.3"

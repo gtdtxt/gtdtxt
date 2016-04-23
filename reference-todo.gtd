@@ -1,0 +1,267 @@
+task: create gtd.txt 😀
+
+// comment
+# comment
+; comment
+
+/*
+multi-line  comment
+ */
+
+# include other files
+include: ./path/to/file
+include: path/to/file
+include: /path/to/file
+
+
+# define tasks using `task:` keyword.
+# there are other attributes (followed by a colon) that allow you to add more metadata to tasks.
+# all attributes must start on its own line with nothing before it (not even whitespace)
+# task attribute + other attributes (e.g. `status:`) make up a 'task block'.
+
+# minimal task [block] (`task:` is required)
+
+task: buy milk
+
+## aliases:
+action: buy milk
+
+todo: buy milk
+
+item: buy milk
+
+# unicode support (e.g. emoji)
+task: create gtd.txt 😀
+
+# tasks are separated by:
+# 1) at least one blank line in-between them,
+# 2) or at least one comment in-between them;
+# 3) or any any combination of (1) and (2) with whitespace (e.g. space, tabs, carriage returns, etc)
+#
+# protip: add comments before task blocks
+
+
+task: buy milk
+
+task: buy orange juice
+# comment
+task: buy orange juice
+    /* comment
+    */
+            /* comment
+            */  # comment
+task: buy orange juice
+
+
+# you may explicitly separate tasks with at least four or more of:
+# =   ====
+# -   ----
+# #   ####
+# /   ////
+# *   ****
+# _   ____
+# :   ::::
+#
+# there shall be no whitespace before task separators on the same line.
+
+
+task: buy milk
+=====
+task: buy orange juice
+-----
+task: buy orange juice
+#####
+task: buy orange juice
+/////
+task: buy orange juice
+*****
+task: buy orange juice
+_____
+task: buy orange juice
+:::::
+task: buy orange juice
+~~~~~
+task: buy orange juice
+
+
+# add priority to tasks
+task: buy milk
+priority: 9001
+
+## priority can be negative
+task: buy milk
+priority: -9001
+
+## by default, tasks are assigned with a priority of 0
+
+
+# associate a task with a project separated with an optional delimiter
+# tasks without a project are assigned to an 'inbox'
+
+task: buy milk
+project: personal / food
+
+## extra redundant delimeters are ignored
+
+task: buy milk
+project: ////personal///////food/////
+
+# created datetime
+
+task: buy milk
+created: jan 11, 2016
+
+task: buy milk
+created: jan 11, 2016 5pm
+
+task: buy milk
+created: jan 11, 2016 5:46am
+
+## date as alias of created
+
+task: buy milk
+date: jan 11, 2016 5:46am
+
+## 24 hour clock
+
+task: buy milk
+created: jan 11, 2016 06:00
+
+task: buy milk
+created: jan 11, 2016 0600
+
+task: buy milk
+created: 0600 jan 11, 2016
+
+# complete a task
+
+task: buy milk
+project: personal/food
+status: complete
+status: done
+status: finished
+
+# due dates
+
+task: buy milk
+due: jan 11, 2016 5pm
+
+
+# defer tasks from review, and specify date of when defer expires
+
+task: buy milk
+defer: jan 11, 2016 5pm
+
+## or use various aliases
+
+task: buy milk
+defer until: jan 11, 2016 5pm
+defer till: jan 11, 2016 5pm
+hide: jan 11, 2016 5pm
+hidden: jan 11, 2016 5pm
+hide till: jan 11, 2016 5pm
+hide until: jan 11, 2016 5pm
+
+## you may defer tasks for forever
+
+task: world domination
+defer: forever
+
+## deferred tasks will be revealed for review when it is due
+
+task: world domination
+defer: forever
+due: december 12, 2012
+
+
+# incubate tasks
+# hide them from being output by default.
+# you will need to pass a command line flag to display them
+
+task: buy milk
+status: incubate
+
+## incubate aliases (case-insensitive)
+task: buy milk
+status: hide
+status: hidden
+status: later
+status: someday
+status: inactive
+status: not active
+
+
+## incubate tasks with `defer` date will be revealed after the `defer` date & time has passed.
+## after the specified date & time, the task will display for review
+
+task: buy milk
+status: incubate
+defer: jan 11, 2016 5pm
+
+# flagging tasks
+
+task: buy milk
+flag: true
+
+# assign tags to a task; comma separated
+
+task: buy milk
+tags: grocery, food
+tag: grocery, food
+
+## extra redundant delimeters are ignored
+
+task: buy milk
+tags: ,,,grocery,,,, food,,,
+tag: ,,,grocery,,,,, food,,,
+
+# assign contexts to a task; comma separated
+
+task: buy milk
+context: supermarket, real life
+contexts: supermarket, real life
+
+## extra redundant delimeters are ignored
+
+
+task: buy milk
+context: ,,,supermarket,,,, real life,,,
+contexts: ,,,supermarket,,,, real life,,,
+
+# progress tasks with time
+
+task: buy milk
+time: 5 hr
+time: 25 mins
+
+#####
+# Incubating features
+#####
+
+# DEV: no parser support yet
+/*notes: Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+    Praesent faucibus lorem id nibh dictum pharetra.
+    Aenean sit amet pharetra velit. Sed ornare quam vel velit egestas fringilla.
+    Etiam feugiat quam justo.
+    */
+
+# multi-line task titles
+# addition lines must begin with a whitespace
+
+# DEV: no parser support yet
+//task: buy milk
+//      and more milk
+
+# assign a task with vanity IDs (whitespace trimmed)
+
+# DEV: parser support exists
+task: buy milk
+id: buy-milk
+
+# recurring tasks (wip)
+# DEV: unsure how this pans out
+
+#task: buy milk
+#recur: 2 days
+
+
