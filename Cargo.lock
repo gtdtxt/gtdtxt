@@ -1,6 +1,6 @@
 [root]
 name = "gtdtxt"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "chomp 0.2.5 (git+https://github.com/m4rw3r/chomp?rev=c1287f2e7ee1558d50a8cab95e1bf900f5a47061)",
  "chrono 0.2.21 (registry+https://github.com/rust-lang/crates.io-index)",

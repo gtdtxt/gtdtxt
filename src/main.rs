@@ -49,7 +49,7 @@ use chomp::ascii::{is_whitespace, decimal, digit};
 fn main() {
 
     let cmd_matches = App::new("gtdtxt")
-        .version("v0.2.2 (semver.org)") // semver semantics
+        .version("v0.2.3 (semver.org)") // semver semantics
         .about("CLI app to parse a human-readable text file for managing GTD workflow")
         .author("Alberto Leal <mailforalberto@gmail.com> (github.com/dashed)")
         .arg(
@@ -670,7 +670,7 @@ fn print_task(journal: &GTD, task: &Task) {
     if task.time > 0 {
         println!("{:>11} {}",
             "Time spent:".bold().blue(),
-            time_len2(task.time)
+            Timerange::new(task.time).print(2)
         );
 
     }
@@ -2928,15 +2928,9 @@ enum RelativeTime {
 // src: http://stackoverflow.com/a/6109105/412627
 fn relative_time(from: i64, to: i64) -> RelativeTime {
 
-    let sec_per_minute: f64 = 60f64;
-    let sec_per_hour: f64 = sec_per_minute * 60f64;
-    let sec_per_day: f64 = sec_per_hour * 24f64;
-    let sec_per_month: f64 = sec_per_day * 30f64;
-    let sec_per_year: f64 = sec_per_day * 365f64;
-
-    let elapsed_num: i64 = (to - from).abs() as i64;
-
-    let range = time_len2(elapsed_num as u64);
+    let elapsed_num: u64 = (to - from).abs() as u64;
+    let range = Timerange::new(elapsed_num).print(2);
+    let elapsed_num = elapsed_num as i64;
 
     if to > from {
         return RelativeTime::Past(elapsed_num, format!("{} ago", range));
@@ -2947,100 +2941,86 @@ fn relative_time(from: i64, to: i64) -> RelativeTime {
     }
 }
 
-// TODO: refactor with above
-fn time_len(len: u64) -> String {
-
-    let sec_per_minute: f64 = 60f64;
-    let sec_per_hour: f64 = sec_per_minute * 60f64;
-    let sec_per_day: f64 = sec_per_hour * 24f64;
-    let sec_per_month: f64 = sec_per_day * 30f64;
-    let sec_per_year: f64 = sec_per_day * 365f64;
-
-    let mut elapsed: f64 = len as f64;
-
-    let time_unit;
-
-    if elapsed < sec_per_minute {
-        time_unit = "seconds"
-    } else if elapsed < sec_per_hour {
-        elapsed = (elapsed / sec_per_minute);
-        time_unit = "minutes";
-    } else if elapsed < sec_per_day {
-        elapsed = (elapsed / sec_per_hour);
-        time_unit = "hours";
-    } else if elapsed < sec_per_month {
-        elapsed = (elapsed / sec_per_day);
-        time_unit = "days";
-    } else if elapsed < sec_per_year {
-        elapsed = (elapsed / sec_per_month);
-        time_unit = "months";
-    } else {
-        elapsed = (elapsed / sec_per_year);
-        time_unit = "years";
-    }
-
-    return format!("{:.2} {}", elapsed, time_unit);
+struct Timerange {
+    range: u64
 }
 
-fn should_add_remainder(remainder: u64) -> Option<String> {
+impl Timerange {
 
-    if remainder == 0 {
-        return None;
-    }
-
-    return Some(time_len(remainder));
-}
-
-fn time_len2(len: u64) -> String {
-
-    let sec_per_minute: f64 = 60f64;
-    let sec_per_hour: f64 = sec_per_minute * 60f64;
-    let sec_per_day: f64 = sec_per_hour * 24f64;
-    let sec_per_month: f64 = sec_per_day * 30f64;
-    let sec_per_year: f64 = sec_per_day * 365f64;
-
-    let mut elapsed: f64 = len as f64;
-    let mut remainder = None;
-
-    let elapsed_num: i64 = elapsed.clone() as i64;
-
-    let time_unit;
-
-    if elapsed < sec_per_minute {
-        time_unit = "seconds"
-    } else if elapsed < sec_per_hour {
-        remainder = should_add_remainder((elapsed % sec_per_minute) as u64);
-        elapsed = (elapsed / sec_per_minute).floor();
-        time_unit = "minutes";
-    } else if elapsed < sec_per_day {
-        remainder = should_add_remainder((elapsed % sec_per_hour) as u64);
-        elapsed = (elapsed / sec_per_hour).floor();
-        time_unit = "hours";
-    } else if elapsed < sec_per_month {
-        remainder = should_add_remainder((elapsed % sec_per_day) as u64);
-        elapsed = (elapsed / sec_per_day).floor();
-        time_unit = "days";
-    } else if elapsed < sec_per_year {
-        remainder = should_add_remainder((elapsed % sec_per_month) as u64);
-        elapsed = (elapsed / sec_per_month).floor();
-        time_unit = "months";
-    } else {
-        remainder = should_add_remainder((elapsed % sec_per_year) as u64);
-        elapsed = (elapsed / sec_per_year).floor();
-        time_unit = "years";
-    }
-
-    match remainder {
-        None => {
-            return format!("{:.2} {}", elapsed, time_unit);
-        },
-        Some(elapsed_remainder) => {
-            return format!("{:.2} {} and {}", elapsed, time_unit, elapsed_remainder);
+    fn new(range: u64) -> Timerange {
+        Timerange {
+            range: range
         }
     }
 
-}
+    fn floor_time_unit(&self) -> (u64, u64, String) {
 
+        let sec_per_minute: f64 = 60f64;
+        let sec_per_hour: f64 = sec_per_minute * 60f64;
+        let sec_per_day: f64 = sec_per_hour * 24f64;
+        let sec_per_month: f64 = sec_per_day * 30f64;
+        let sec_per_year: f64 = sec_per_day * 365f64;
+
+        let mut elapsed = self.range as f64;
+        let mut remainder: f64 = 0f64;
+        let unit;
+
+        if elapsed < sec_per_minute {
+            unit = "second";
+        } else if elapsed < sec_per_hour {
+            remainder = elapsed % sec_per_minute;
+            elapsed = (elapsed / sec_per_minute).floor();
+            unit = "minute"
+        } else if elapsed < sec_per_day {
+            remainder = elapsed % sec_per_hour;
+            elapsed = (elapsed / sec_per_hour).floor();
+            unit = "hour"
+        } else if elapsed < sec_per_month {
+            remainder = elapsed % sec_per_day;
+            elapsed = (elapsed / sec_per_day).floor();
+            unit = "day"
+        } else if elapsed < sec_per_year {
+            remainder = elapsed % sec_per_month;
+            elapsed = (elapsed / sec_per_month).floor();
+            unit = "month"
+        } else {
+            remainder = elapsed % sec_per_year;
+            elapsed = (elapsed / sec_per_year).floor();
+            unit = "year"
+        }
+
+        // pluralize
+        let unit = if elapsed <= 1f64 {
+            format!("{}", unit)
+        } else {
+            format!("{}s", unit)
+        };
+
+        let elapsed = elapsed as u64;
+        let remainder = remainder as u64;
+
+        return (elapsed, remainder, unit);
+    }
+
+    fn print(&self, depth: u32) -> String {
+
+        let (elapsed, remainder, unit) = self.floor_time_unit();
+
+        if remainder <= 0 || depth <= 1 {
+            return format!("{} {}", elapsed, unit);
+        }
+
+        let pretty_remainder = Timerange::new(remainder).print(depth - 1);
+
+        if remainder < 60 || depth <= 2 {
+            return format!("{} {} and {}", elapsed, unit, pretty_remainder);
+        }
+
+
+        return format!("{} {} {}", elapsed, unit, pretty_remainder);
+
+    }
+}
 
 // TODO: refactor
 fn traverse(path: &mut [String], tree: &mut Tree) {
