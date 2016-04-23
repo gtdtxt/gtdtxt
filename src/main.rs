@@ -2982,6 +2982,15 @@ fn time_len(len: u64) -> String {
     return format!("{:.2} {}", elapsed, time_unit);
 }
 
+fn should_add_remainder(remainder: u64) -> Option<String> {
+
+    if remainder == 0 {
+        return None;
+    }
+
+    return Some(time_len(remainder));
+}
+
 fn time_len2(len: u64) -> String {
 
     let sec_per_minute: f64 = 60f64;
@@ -3000,23 +3009,23 @@ fn time_len2(len: u64) -> String {
     if elapsed < sec_per_minute {
         time_unit = "seconds"
     } else if elapsed < sec_per_hour {
-        remainder = Some(time_len((elapsed % sec_per_minute) as u64));
+        remainder = should_add_remainder((elapsed % sec_per_minute) as u64);
         elapsed = (elapsed / sec_per_minute).floor();
         time_unit = "minutes";
     } else if elapsed < sec_per_day {
-        remainder = Some(time_len((elapsed % sec_per_hour) as u64));
+        remainder = should_add_remainder((elapsed % sec_per_hour) as u64);
         elapsed = (elapsed / sec_per_hour).floor();
         time_unit = "hours";
     } else if elapsed < sec_per_month {
-        remainder = Some(time_len((elapsed % sec_per_day) as u64));
+        remainder = should_add_remainder((elapsed % sec_per_day) as u64);
         elapsed = (elapsed / sec_per_day).floor();
         time_unit = "days";
     } else if elapsed < sec_per_year {
-        remainder = Some(time_len((elapsed % sec_per_month) as u64));
+        remainder = should_add_remainder((elapsed % sec_per_month) as u64);
         elapsed = (elapsed / sec_per_month).floor();
         time_unit = "months";
     } else {
-        remainder = Some(time_len((elapsed % sec_per_year) as u64));
+        remainder = should_add_remainder((elapsed % sec_per_year) as u64);
         elapsed = (elapsed / sec_per_year).floor();
         time_unit = "years";
     }
