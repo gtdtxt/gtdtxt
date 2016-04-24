@@ -49,7 +49,7 @@ use chomp::ascii::{is_whitespace, decimal, digit};
 fn main() {
 
     let cmd_matches = App::new("gtdtxt")
-        .version("v0.2.3 (semver.org)") // semver semantics
+        .version("v0.3.0 (semver.org)") // semver semantics
         .about("CLI app to parse a human-readable text file for managing GTD workflow")
         .author("Alberto Leal <mailforalberto@gmail.com> (github.com/dashed)")
         .arg(
