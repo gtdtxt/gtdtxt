@@ -527,6 +527,32 @@ fn print_task(journal: &GTD, task: &Task) {
         }
     }
 
+    match task.done_at {
+        None => {},
+        Some(ref done_at) => {
+
+            let rel_time = relative_time(done_at.timestamp(), Local::now().naive_local().timestamp());
+
+            let rel_time = match rel_time {
+                RelativeTime::Now(_, rel_time) => {
+                    format!("({})", rel_time)
+                },
+                RelativeTime::Past(_, rel_time) => {
+                    format!("({})", rel_time)
+                },
+                RelativeTime::Future(_, rel_time) => {
+                    format!("({})", rel_time)
+                }
+            };
+
+            println!("{:>11} {} {}",
+                "Done at:".bold().blue(),
+                done_at.format("%B %e, %Y %-l:%M %p"),
+                rel_time
+            );
+        }
+    }
+
     match task.defer {
         None => {},
         Some(ref defer) => {
@@ -696,6 +722,7 @@ struct Task {
     /* props */
     title: Option<String>,
     created_at: Option<NaiveDateTime>,
+    done_at: Option<NaiveDateTime>,
     due_at: Option<NaiveDateTime>,
     defer: Option<Defer>,
     status: Option<Status>,
@@ -719,6 +746,7 @@ impl Task {
             /* props */
             title: None,
             created_at: None,
+            done_at: None,
             due_at: None,
             defer: None,
             status: None,
@@ -730,6 +758,24 @@ impl Task {
             flag: false,
             source_file: None
         }
+    }
+
+    fn is_done(&self) -> bool {
+
+        match self.status {
+            None => {},
+            Some(ref status) => {
+
+                match status {
+                    &Status::Done => {
+                        return true;
+                    },
+                    _ => {}
+                }
+            }
+        };
+
+        return false;
     }
 
     fn debug_range_string(&self) -> String {
@@ -939,6 +985,8 @@ impl GTD {
         task.task_block_range_end = self.previous_task_block_line;
         let task = task;
 
+        // validation
+
         if task.title.is_none() {
 
             println!("Missing task title (i.e. `task: <title>`) in task block found {}",
@@ -946,6 +994,20 @@ impl GTD {
             );
             process::exit(1);
         }
+
+        match task.done_at {
+            None => {},
+            Some(ref done_at) => {
+
+                if !task.is_done() {
+                    println!("Task is incorrectly given a `done` datetime found at {}",
+                        task.debug_range_string()
+                    );
+                    process::exit(1);
+                }
+
+            }
+        };
 
         let new_id = self.next_task_id();
 
@@ -1421,6 +1483,10 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                                 let created_at: NaiveDateTime = created_at;
                                 current_task.created_at = Some(created_at);
                             },
+                            TaskBlock::Done(done_at) => {
+                                let done_at: NaiveDateTime = done_at;
+                                current_task.done_at = Some(done_at);
+                            },
                             TaskBlock::Status(status) => {
 
                                 current_task.status = Some(status);
@@ -1651,6 +1717,7 @@ enum Defer {
 enum TaskBlock {
     Title(String),
     Created(NaiveDateTime),
+    Done(NaiveDateTime),
     Due(NaiveDateTime),
     Defer(Defer),
     Priority(i64),
@@ -1674,6 +1741,7 @@ fn task_block(i: Input<u8>) -> U8Result<LineToken> {
             task_project() <|>
             task_flag() <|>
             task_created() <|>
+            task_done() <|>
             task_status() <|>
             task_due() <|>
             task_defer() <|>
@@ -1827,9 +1895,30 @@ fn task_created(input: Input<u8>) -> U8Result<TaskBlock> {
 
         let line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
 
-        ret {
-            TaskBlock::Created(created_at)
-        }
+        ret TaskBlock::Created(created_at)
+    }
+}
+
+fn task_done(input: Input<u8>) -> U8Result<TaskBlock> {
+
+    parse!{input;
+
+        string_ignore_case("done at".as_bytes()) <|>
+        string_ignore_case("done".as_bytes()) <|>
+        string_ignore_case("completed".as_bytes()) <|>
+        string_ignore_case("complete".as_bytes());
+
+        token(b':');
+
+        look_ahead(|i| non_empty_line(i));
+
+        skip_many(|i| space_or_tab(i));
+
+        let done_at = parse_datetime(false);
+
+        let line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+
+        ret TaskBlock::Done(done_at)
     }
 }
 
