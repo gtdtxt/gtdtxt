@@ -1079,6 +1079,8 @@ impl GTD {
                 } else if !self.should_defer(&task) {
                     // add task to inbox
                     self.add_to_inbox(task.priority, new_id);
+                } else {
+                    self.add_to_incubate(task.priority, new_id);
                 }
 
             },
@@ -1094,6 +1096,8 @@ impl GTD {
                         } else if !self.should_defer(&task) {
                             // add task to inbox
                             self.add_to_inbox(task.priority, new_id);
+                        } else {
+                            self.add_to_incubate(task.priority, new_id);
                         }
                     },
                     &Status::Incubate => {
