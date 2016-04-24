@@ -397,7 +397,39 @@ fn main() {
         println!("");
     }
 
-    let mut days_ago = 7;
+    println!(" {}",
+        "Tasks completed in the past week (tracked using `done:`)".purple().bold()
+    );
+
+
+    let mut days_ago = 0;
+    loop {
+
+        // let items_num = match journal.pulse.get(&days_ago) {
+        //     None => 0,
+        //     Some(bucket) => {
+        //         // (*bucket).push(task_id);
+        //         (*bucket).len()
+        //     }
+        // };
+
+
+        print!("{:>11} {}",
+            format!("{} {}", days_ago, "days ago").purple(),
+            format!("|").purple()
+        );
+
+        if days_ago >= 7 {
+            break;
+        }
+
+        days_ago = days_ago + 1;
+
+    }
+
+    println!("");
+
+    let mut days_ago = 0;
     loop {
 
         let items_num = match journal.pulse.get(&days_ago) {
@@ -409,21 +441,21 @@ fn main() {
         };
 
 
-        println!("{:>20} {}",
-            format!("Tasks completed {} {}", days_ago, "days ago").purple(),
-            format!("{}", items_num).bold().purple()
+        print!("{:>11} {}",
+            format!("{}", items_num).bold().purple(),
+            format!("|").purple()
         );
 
-        if days_ago <= 0 {
+        if days_ago >= 7 {
             break;
         }
 
-        days_ago = days_ago - 1;
+        days_ago = days_ago + 1;
 
     }
 
     println!("");
-
+    println!("");
 
     println!("{:>20} {}",
         "Tasks overdue".purple(),
