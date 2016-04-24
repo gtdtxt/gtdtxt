@@ -758,6 +758,9 @@ struct GTD {
     // track files opened
     opened_files: HashSet<String>,
 
+    // path to file -> vector of task ids
+    files_with_completed_tasks: HashMap<String, Vec<i32>>,
+
     tags: HashSet<String>,
 
     contexts: HashSet<String>,
@@ -828,6 +831,8 @@ impl GTD {
 
             base_root: base_root,
             opened_files: HashSet::new(),
+
+            files_with_completed_tasks: HashMap::new(),
 
             tags: HashSet::new(),
             contexts: HashSet::new(),
@@ -927,6 +932,32 @@ impl GTD {
         }
 
         let new_id = self.next_task_id();
+
+        // track completed task by its source file
+        match task.status {
+            None => {},
+            Some(ref status) => {
+
+                match status {
+                    &Status::Done => {
+                        match task.source_file {
+                            None => unsafe { debug_unreachable!() },
+                            Some(ref source_file) => {
+                                match self.files_with_completed_tasks.get_mut(source_file) {
+                                    None => unsafe { debug_unreachable!() },
+                                    Some(bucket) => {
+                                        (*bucket).push(new_id);
+                                    }
+                                }
+                            }
+                        }
+
+                    },
+                    _ => {}
+                }
+            }
+        }
+
 
         // option: hide non-project tasks
         // option:
@@ -1308,9 +1339,14 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
         process::exit(1);
     }
 
+    journal.files_with_completed_tasks.insert(tracked_path.clone(), Vec::new());
+
     // parse gtdtxt file
 
     let mut input = Source::new(file);
+
+    // directive switches
+    let mut file_shall_not_contain_completed_tasks: bool = false;
 
     // initial state
     let mut previous_state: ParseState = ParseState::Start;
@@ -1370,6 +1406,7 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                                 current_task.created_at = Some(created_at);
                             },
                             TaskBlock::Status(status) => {
+
                                 current_task.status = Some(status);
                             },
                             TaskBlock::Due(due_at) => {
@@ -1426,6 +1463,9 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                         match directive_line {
                             Directive::Include(path_to_file) => {
                                 parse_file(Some(tracked_path.clone()), path_to_file, journal);
+                            },
+                            Directive::ShouldNotContainCompletedTasks(result) => {
+                                file_shall_not_contain_completed_tasks = result;
                             }
                         };
 
@@ -1482,6 +1522,25 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
         },
         _ => {}
     };
+
+    match journal.files_with_completed_tasks.get_mut(&tracked_path) {
+        None => unsafe { debug_unreachable!() },
+        Some(bucket) => {
+            if (*bucket).len() > 0 && file_shall_not_contain_completed_tasks {
+                println!("Found {} completed tasks that are not supposed to be in file: {}",
+                    (*bucket).len(),
+                    tracked_path);
+
+                let task: &Task = journal.tasks.get((*bucket).first().unwrap()).unwrap();
+
+                println!("Found a completed task at lines: {} to {}",
+                    task.task_block_range_start,
+                    task.task_block_range_end
+                );
+                process::exit(1);
+            }
+        }
+    }
 
     journal.opened_files.remove(&tracked_path);
 
@@ -1724,22 +1783,7 @@ fn task_flag(input: Input<u8>) -> U8Result<TaskBlock> {
 
         skip_many(|i| space_or_tab(i));
 
-        let input = or(
-            |i| parse!{i;
-
-                string_ignore_case("yes".as_bytes()) <|>
-                string_ignore_case("true".as_bytes());
-
-                ret true
-            },
-            |i| parse!{i;
-
-                string_ignore_case("no".as_bytes()) <|>
-                string_ignore_case("false".as_bytes());
-
-                ret false
-            }
-        );
+        let input = bool_option_parser();
 
         let line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
 
@@ -1942,14 +1986,16 @@ fn task_id(input: Input<u8>) -> U8Result<TaskBlock> {
 
 #[derive(Debug)]
 enum Directive {
-    Include(String)
+    Include(String),
+    ShouldNotContainCompletedTasks(bool)
 }
 
 fn directives(input: Input<u8>) -> U8Result<LineToken> {
 
     parse!{input;
 
-        let line: Directive = directive_include();
+        let line: Directive = directive_include() <|>
+            directive_not_contain_done_tasks();
 
         ret {
             LineToken::Directive(line)
@@ -1972,6 +2018,23 @@ fn directive_include(input: Input<u8>) -> U8Result<Directive> {
             let path_to_file: String = format!("{}", String::from_utf8_lossy(line.as_slice()).trim());
             Directive::Include(path_to_file)
         }
+    }
+}
+
+fn directive_not_contain_done_tasks(input: Input<u8>) -> U8Result<Directive> {
+
+    parse!{input;
+
+        string_ignore_case("file_no_done_tasks".as_bytes());
+        token(b':');
+
+        skip_many(|i| space_or_tab(i));
+
+        let input = bool_option_parser();
+
+        let nothing: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+
+        ret Directive::ShouldNotContainCompletedTasks(input)
     }
 }
 
@@ -2147,6 +2210,25 @@ fn delim_sep_item(i: Input<u8>, delim: u8) -> U8Result<Vec<u8>> {
 }
 
 /* misc parsers */
+
+fn bool_option_parser(i: Input<u8>) -> U8Result<bool> {
+    or(i,
+        |i| parse!{i;
+
+            string_ignore_case("yes".as_bytes()) <|>
+            string_ignore_case("true".as_bytes());
+
+            ret true
+        },
+        |i| parse!{i;
+
+            string_ignore_case("no".as_bytes()) <|>
+            string_ignore_case("false".as_bytes());
+
+            ret false
+        }
+    )
+}
 
 fn match_four_tokens<'a>(input: Input<'a, u8>, token: &[u8])
 -> SimpleResult<'a, u8, ()> {
