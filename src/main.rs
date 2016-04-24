@@ -405,15 +405,6 @@ fn main() {
     let mut days_ago = 0;
     loop {
 
-        // let items_num = match journal.pulse.get(&days_ago) {
-        //     None => 0,
-        //     Some(bucket) => {
-        //         // (*bucket).push(task_id);
-        //         (*bucket).len()
-        //     }
-        // };
-
-
         print!("{:>11} {}",
             format!("{} {}", days_ago, "days ago").purple(),
             format!("|").purple()
@@ -435,11 +426,9 @@ fn main() {
         let items_num = match journal.pulse.get(&days_ago) {
             None => 0,
             Some(bucket) => {
-                // (*bucket).push(task_id);
                 (*bucket).len()
             }
         };
-
 
         print!("{:>11} {}",
             format!("{}", items_num).bold().purple(),
