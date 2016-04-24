@@ -795,7 +795,6 @@ impl Task {
 struct GTD {
 
     /* debug */
-    num_of_lines_parsed: u64,
     // the line of the last task block line parsed
     previous_task_block_line: u64,
 
@@ -872,7 +871,6 @@ impl GTD {
         GTD {
 
             /* error output */
-            num_of_lines_parsed: 0,
             previous_task_block_line: 0,
 
             /* options */
@@ -1423,6 +1421,8 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
 
     journal.files_with_completed_tasks.insert(tracked_path.clone(), Vec::new());
 
+    let mut num_of_lines_parsed = 0;
+
     // parse gtdtxt file
 
     let mut input = Source::new(file);
@@ -1442,21 +1442,21 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
         match input.parse(m) {
             Ok((lines_parsed, line)) => {
 
-                journal.num_of_lines_parsed += lines_parsed;
+                num_of_lines_parsed += lines_parsed;
 
                 match line {
 
                     LineToken::Task(task_block_line) => {
 
                         // mark this line as previous task block seen
-                        journal.previous_task_block_line = journal.num_of_lines_parsed;
+                        journal.previous_task_block_line = num_of_lines_parsed;
 
                         let current_task: &mut Task = match previous_state {
                             ParseState::Task(ref mut task) => {
                                 task
                             },
                             _ => {
-                                let mut new_task: Task = Task::new(journal.num_of_lines_parsed);
+                                let mut new_task: Task = Task::new(num_of_lines_parsed);
                                 new_task.source_file = Some(tracked_path.clone());
                                 previous_state = ParseState::Task(new_task);
 
@@ -1596,7 +1596,7 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
             },
             Err(e) => {
                 // println!("{:?}", e);
-                println!("Error parsing starting at line {}", journal.num_of_lines_parsed + 1);
+                println!("Error parsing starting at line {} in file: {}", num_of_lines_parsed + 1, tracked_path);
                 process::exit(1);
             }
         }
