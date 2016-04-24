@@ -1,4 +1,3 @@
-task: create gtd.txt 😀
 
 // comment
 # comment
@@ -9,9 +8,9 @@ multi-line  comment
  */
 
 # include other files
-// include: ./path/to/file
-// include: path/to/file
-// include: /path/to/file
+include: ./path/to/file
+include: path/to/file
+include: /path/to/file
 
 
 # define tasks using `task:` keyword.
@@ -141,6 +140,13 @@ status: complete
 status: done
 status: finished
 
+# If you don't want to pollute your gtd files with completed tasks, you may hint
+# that those files shouldn't contain completed tasks. Therefore forcing you
+# to reorganize them elsewhere e.g. putting them into completed.gtd
+#
+# ensure no completed tasks in this file
+file_no_done_tasks: true
+
 # due dates
 
 task: buy milk
@@ -176,7 +182,7 @@ due: december 12, 2012
 
 # incubate tasks
 # hide them from being output by default.
-# you will need to pass a command line flag to display them
+# you will need to pass a command line option to display them
 
 task: buy milk
 status: incubate
@@ -199,9 +205,14 @@ status: incubate
 defer: jan 11, 2016 5pm
 
 # flagging tasks
+# you may flag tasks, which may be useful for filtering out any non-flagged tasks
+# or for flagged tasks to be filtered out
 
 task: buy milk
 flag: true
+flag: false
+flag: yes
+flag: no
 
 # assign tags to a task; comma separated
 
@@ -228,7 +239,8 @@ task: buy milk
 context: ,,,supermarket,,,, real life,,,
 contexts: ,,,supermarket,,,, real life,,,
 
-# progress tasks with time
+# progress tasks with time.
+# this combos well with pomodoro technique/system
 
 task: buy milk
 time: 5 hr
