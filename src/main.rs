@@ -266,6 +266,7 @@ fn main() {
 
 
     parse_file(None, path_to_file.clone(), &mut journal);
+    let journal: GTD = journal;
 
     if cmd_matches.is_present("validate") {
         println!("{:>20} {}", "Tasks found".purple(), format!("{}", journal.tasks.len()).bold().purple());
@@ -275,7 +276,22 @@ fn main() {
         return;
     }
 
-    let journal: GTD = journal;
+    // Display tasks
+
+    if journal.show_only_flagged {
+        println!("{:>11} {}",
+            "",
+            "Displaying only flagged tasks.".bold().yellow()
+        );
+        println!("");
+    } else if journal.hide_flagged {
+        println!("{:>11} {}",
+            "",
+            "Hiding flagged tasks.".bold().yellow()
+        );
+        println!("");
+    }
+
 
     let mut print_line: bool = false;
     let mut num_displayed: u32 = 0;
