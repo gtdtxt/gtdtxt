@@ -397,6 +397,33 @@ fn main() {
         println!("");
     }
 
+    let mut days_ago = 7;
+    loop {
+
+        let items_num = match journal.pulse.get(&days_ago) {
+            None => 0,
+            Some(bucket) => {
+                // (*bucket).push(task_id);
+                (*bucket).len()
+            }
+        };
+
+
+        println!("{:>20} {}",
+            format!("Tasks completed {} {}", days_ago, "days ago").purple(),
+            format!("{}", items_num).bold().purple()
+        );
+
+        if days_ago <= 0 {
+            break;
+        }
+
+        days_ago = days_ago - 1;
+
+    }
+
+    println!("");
+
 
     println!("{:>20} {}",
         "Tasks overdue".purple(),
@@ -822,6 +849,8 @@ struct GTD {
     // path to file -> vector of task ids
     files_with_completed_tasks: HashMap<String, Vec<i32>>,
 
+    pulse: HashMap<i64, Vec<i32>>,
+
     tags: HashSet<String>,
 
     contexts: HashSet<String>,
@@ -893,6 +922,8 @@ impl GTD {
             opened_files: HashSet::new(),
 
             files_with_completed_tasks: HashMap::new(),
+
+            pulse: HashMap::new(),
 
             tags: HashSet::new(),
             contexts: HashSet::new(),
@@ -993,6 +1024,8 @@ impl GTD {
             process::exit(1);
         }
 
+        let new_id = self.next_task_id();
+
         match task.done_at {
             None => {},
             Some(ref done_at) => {
@@ -1002,12 +1035,14 @@ impl GTD {
                         task.debug_range_string()
                     );
                     process::exit(1);
+                } else {
+
+                    self.add_to_pulse(done_at, new_id);
+
                 }
 
             }
         };
-
-        let new_id = self.next_task_id();
 
         // track completed task by its source file
         match task.status {
@@ -1200,6 +1235,35 @@ impl GTD {
         }
 
         return false;
+    }
+
+    fn add_to_pulse(&mut self, done_at: &NaiveDateTime, task_id: i32) {
+
+        let diff = Local::now().naive_local().timestamp() - done_at.timestamp();
+
+        if !(0 <= diff && diff <= chrono::Duration::days(7).num_seconds()) {
+            return;
+        }
+
+        let diff = diff as f64;
+
+        let sec_per_minute: f64 = 60f64;
+        let sec_per_hour: f64 = sec_per_minute * 60f64;
+        let sec_per_day: f64 = sec_per_hour * 24f64;
+
+        let days_ago = (diff / sec_per_day).floor() as i64;
+
+        if !self.pulse.contains_key(&days_ago) {
+            self.pulse.insert(days_ago, Vec::new());
+        }
+
+        match self.pulse.get_mut(&days_ago) {
+            None => unsafe { debug_unreachable!("journal.overdue missing expected bucket") },
+            Some(bucket) => {
+                (*bucket).push(task_id);
+            }
+        }
+
     }
 
     fn is_overdue(&mut self, task: &Task) -> bool {
