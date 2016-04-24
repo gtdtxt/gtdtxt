@@ -253,44 +253,16 @@ fn main() {
         }
     }
 
-    // TODO: refactor these
 
-    if cmd_matches.is_present("sort-overdue-by-priority") {
-        journal.sort_overdue_by_priority = true;
-    }
-
-    if cmd_matches.is_present("hide-flagged") {
-        journal.hide_flagged = true;
-    }
-
-    // this has precedence over hide_flagged option
-    if cmd_matches.is_present("show-only-flagged") {
-        journal.show_only_flagged = true;
-    }
-
-    if cmd_matches.is_present("show-done") {
-        journal.show_done = true;
-    }
-
-    if cmd_matches.is_present("show-incubate") {
-        journal.show_incubate = true;
-    }
-
-    if cmd_matches.is_present("reveal-deferred") {
-        journal.dont_hide_deferred = true;
-    }
-
-    if cmd_matches.is_present("hide-overdue") {
-        journal.hide_overdue = true;
-    }
-
-    if cmd_matches.is_present("hide-nonproject-tasks") {
-        journal.hide_nonproject_tasks = true;
-    }
-
-    if cmd_matches.is_present("hide-incomplete") {
-        journal.hide_incomplete = true;
-    }
+    journal.sort_overdue_by_priority = cmd_matches.is_present("sort-overdue-by-priority");
+    journal.hide_flagged = cmd_matches.is_present("hide-flagged");
+    journal.show_only_flagged = cmd_matches.is_present("show-only-flagged");
+    journal.show_done = cmd_matches.is_present("show-done");
+    journal.show_incubate = cmd_matches.is_present("show-incubate");
+    journal.dont_hide_deferred = cmd_matches.is_present("reveal-deferred");
+    journal.hide_overdue = cmd_matches.is_present("hide-overdue");
+    journal.hide_nonproject_tasks = cmd_matches.is_present("hide-nonproject-tasks");
+    journal.hide_incomplete = cmd_matches.is_present("hide-incomplete");
 
 
     parse_file(None, path_to_file.clone(), &mut journal);
@@ -496,9 +468,7 @@ fn print_task(journal: &GTD, task: &Task) {
     }
 
     match task.status {
-        None => {
-            // TODO: complete
-        },
+        None => {},
         Some(ref status) => {
             let status_string = match status {
                 &Status::Done => {
@@ -1345,8 +1315,6 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
     // initial state
     let mut previous_state: ParseState = ParseState::Start;
 
-    // TODO: bootstrap data structures
-
     loop {
 
         let mut n = Numbering::new(LineNumber::new(), line_token_parser);
@@ -1589,35 +1557,6 @@ fn pre_block(i: Input<u8>) -> U8Result<LineToken> {
                 |i| terminating(i)
             )
         );
-        // TODO: simplify this
-        // or(
-        //     |i| parse!{i;
-        //         skip_many(
-        //             |i| whitespace(i)
-        //         );
-        //         comments_one_line();
-        //         ret ()
-        //     },
-        //     |i| parse!{i;
-
-        //         /*
-        //         consume comment blocks or whitespace till
-        //         one line comments or terminating
-        //          */
-        //         let line: Vec<()> = many_till(
-        //             |i| or(i,
-        //                 |i| comments_block(i),
-        //                 |i| whitespace(i)
-        //             ),
-        //             |i| or(i,
-        //                 |i| comments_one_line(i),
-        //                 |i| terminating(i)
-        //             )
-        //         );
-
-        //         ret ()
-        //     }
-        // );
 
         ret LineToken::PreBlock;
     }
@@ -2078,7 +2017,6 @@ fn parse_line(i: Input<u8>) -> U8Result<Line> {
 
             // lines with just whitespace are probably not interesting
             // TODO: consider space_or_tab?
-            // TODO: refactor?
             skip_many(|i| whitespace(i));
 
             let line: Vec<u8> = many_till(any, |i| terminating(i));
@@ -2116,7 +2054,6 @@ fn parse_task_separator<'a>(input: Input<'a, u8>, token: &[u8])
 
         match_four_tokens(token);
         skip_many(|i| string(i, token));
-        // TODO: skip_many_till?
         let line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
 
         ret ()
@@ -2134,7 +2071,7 @@ fn comments_one_line(i: Input<u8>) -> U8Result<()> {
                 |i| string(i, ";".as_bytes())
             )
         );
-        // TODO: skip_many_till?
+
         let line: Vec<u8> = many_till(|i| any(i), |i| terminating(i));
         ret ()
     }
@@ -2143,7 +2080,7 @@ fn comments_one_line(i: Input<u8>) -> U8Result<()> {
 fn comments_block(i: Input<u8>) -> U8Result<()> {
     parse!{i;
         string("/*".as_bytes());
-        // TODO: skip_many_till?
+
         let line: Vec<u8> = many_till(|i| any(i), |i| string(i, "*/".as_bytes()));
         ret ()
     }
