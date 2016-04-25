@@ -1541,6 +1541,13 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
         match input.parse(m) {
             Ok((lines_parsed, line)) => {
 
+                // amend behaviour of newline counting
+                let lines_parsed = if lines_parsed == 0 {
+                    1
+                } else {
+                    lines_parsed
+                };
+
                 num_of_lines_parsed += lines_parsed;
 
                 match line {
@@ -3376,7 +3383,7 @@ fn traverse(path: &mut [String], tree: &mut Tree) {
 }
 
 /*
-Source: https://gist.github.com/m4rw3r/1f43559dcd73bf46e845
+Adapted from: https://gist.github.com/m4rw3r/1f43559dcd73bf46e845
 Thanks to github.com/m4rw3r for wrapping parsers for line number tracking!
 */
 
@@ -3388,10 +3395,12 @@ pub trait NumberingType {
     fn position(&self) -> Self::Position;
 }
 
+#[derive(Debug)]
 pub struct LineNumber(u64);
 
+// Semantics: count number of newlines
 impl LineNumber {
-    pub fn new() -> Self { LineNumber(1) }
+    pub fn new() -> Self { LineNumber(0) }
 }
 
 impl NumberingType for LineNumber {
@@ -3399,7 +3408,7 @@ impl NumberingType for LineNumber {
     type Position = u64;
 
     fn update(&mut self, b: &[Self::Token]) {
-        self.0 = self.0 + b.iter().filter(|&&c| c == b'\n').count() as u64
+        self.0 = self.0 + b.iter().filter(|&&c| c == b'\n').count() as u64;
     }
 
     fn position(&self) -> Self::Position {
@@ -3407,6 +3416,7 @@ impl NumberingType for LineNumber {
     }
 }
 
+#[derive(Debug)]
 pub struct Numbering<'i, T, P, R, E>
   where T: NumberingType,
         P: FnMut(Input<'i, T::Token>) -> ParseResult<'i, T::Token, R, E>,
@@ -3423,6 +3433,7 @@ impl<'i, N, P, R, E> Numbering<'i, N, P, R, E>
         P: FnMut(Input<'i, N::Token>) -> ParseResult<'i, N::Token, R, E>,
         R: 'i,
         E: 'i,
+        <N as NumberingType>::Position: std::fmt::Debug,
         <N as NumberingType>::Token: 'i {
     pub fn new(n: N, p: P) -> Self {
         Numbering {
@@ -3439,11 +3450,12 @@ impl<'i, N, P, R, E> Numbering<'i, N, P, R, E>
         use chomp::primitives::State;
 
         let buf = i.clone();
-        let pos = self.numbering.position();
 
         match (self.parser)(i.clone()).into_inner() {
             State::Data(remainder, t) => {
                 self.numbering.update(&buf.buffer()[..buf.buffer().len() - remainder.buffer().len()]);
+
+                let pos = self.numbering.position();
 
                 remainder.ret((pos, t))
             },
@@ -3455,4 +3467,36 @@ impl<'i, N, P, R, E> Numbering<'i, N, P, R, E>
             State::Incomplete(n) => buf.incomplete(n)
         }
     }
+}
+
+// Source: https://gist.github.com/dashed/9d18b7e4cc351a7feabc89897a58baff
+#[test]
+fn line_numbering() {
+    use chomp::take;
+    use std::cell::Cell;
+    use chomp::buffer::{IntoStream, Stream, StreamError};
+
+    let mut data = b"abc\nc\n\ndef".into_stream();
+    // Just some state to make sure we are called the correct number of times:
+    let i = Cell::new(0);
+    let p = |d| {
+        i.set(i.get() + 1);
+        take(d, 2)
+    };
+    let mut n = Numbering::new(LineNumber::new(), p);
+    // If we could implement FnMut for Numbering then we would be good, but we need to wrap now:
+    let mut m = |i| n.parse(i);
+
+    assert_eq!(data.parse(&mut m), Ok((0, &b"ab"[..])));
+    assert_eq!(i.get(), 1);
+    assert_eq!(data.parse(&mut m), Ok((1, &b"c\n"[..])));
+    assert_eq!(i.get(), 2);
+    assert_eq!(data.parse(&mut m), Ok((2, &b"c\n"[..])));
+    assert_eq!(i.get(), 3);
+    assert_eq!(data.parse(&mut m), Ok((3, &b"\nd"[..])));
+    assert_eq!(i.get(), 4);
+    assert_eq!(data.parse(&mut m), Ok((3, &b"ef"[..])));
+    assert_eq!(i.get(), 5);
+    assert_eq!(data.parse(&mut m), Err(StreamError::EndOfInput));
+    assert_eq!(i.get(), 5);
 }
