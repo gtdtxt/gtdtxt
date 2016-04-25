@@ -6,7 +6,7 @@ gtdtxt
 ![](screenshot.png)
 
 ```
-gtdtxt v0.3.0 (semver.org)
+gtdtxt v0.4.0 (semver.org)
 Alberto Leal <mailforalberto@gmail.com> (github.com/dashed)
 CLI app to parse a human-readable text file for managing GTD workflow
 
