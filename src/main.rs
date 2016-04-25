@@ -1873,25 +1873,7 @@ fn task_title(input: Input<u8>) -> U8Result<TaskBlock> {
 
         let line = non_empty_line();
 
-        // // support multi-line task titles
-        // // TODO: temporary
-        // // TODO: make this many
-        // skip_many(
-        //     |i| parse!{i;
-        //         look_ahead(|i| satisfy(i, |c| is_whitespace(c)));
-
-        //         // TODO: warn user on this condition
-        //         // look_ahead(|i| task_block(i));
-
-
-        //         non_empty_line();
-        //         ret ()
-        //     }
-        // );
-
         ret {
-            // TODO: cleanup
-            // let title: String = String::from_utf8_lossy(&line);
             let title: String = format!("{}", String::from_utf8_lossy(line.as_slice()).trim());
             TaskBlock::Title(title)
         }
@@ -1923,7 +1905,10 @@ fn task_note(input: Input<u8>) -> U8Result<TaskBlock> {
                 let line = non_empty_line();
 
                 ret {
-                    let line: String = format!("{:>11} {}", "", String::from_utf8_lossy(line.as_slice()).trim());
+                    let line: String = format!("{:>11} {}",
+                        "",
+                        String::from_utf8_lossy(line.as_slice()).trim()
+                    );
                     line
                 }
             }
