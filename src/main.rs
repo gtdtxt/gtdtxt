@@ -1063,9 +1063,12 @@ impl GTD {
             Some(ref done_at) => {
 
                 if !task.is_done() {
+
+                    println!("In file: {}", task.source_file.as_ref().unwrap());
                     println!("Task is incorrectly given a `done` datetime found at {}",
                         task.debug_range_string()
                     );
+                    println!("Mayhaps you forgot to add: 'status: done'");
                     process::exit(1);
                 } else {
 
