@@ -1897,21 +1897,48 @@ fn task_note(input: Input<u8>) -> U8Result<TaskBlock> {
         let line = non_empty_line();
 
         let other_lines: Vec<String> = many(
-            |i| parse!{i;
+            |i| or(i,
+                |i| parse!{i;
 
-                space_or_tab();
-                skip_many(|i| space_or_tab(i));
+                    // allow empty lines in note
 
-                let line = non_empty_line();
+                    let nothing: Vec<()> = many(|i| parse!{i;
+                        let nothing: Vec<()> = many_till(|i| space_or_tab(i), |i| end_of_line(i));
+                        ret ()
+                    });
 
-                ret {
-                    let line: String = format!("{:>11} {}",
-                        "",
-                        String::from_utf8_lossy(line.as_slice()).trim()
-                    );
-                    line
+                    space_or_tab();
+
+                    let line = non_empty_line();
+
+                    ret {
+
+                        let filler = String::from_utf8(vec![b'\n'; nothing.len()]).ok().unwrap();
+
+                        let line: String = format!("{}{:>11} {}",
+                            filler,
+                            "",
+                            String::from_utf8_lossy(line.as_slice()).trim()
+                        );
+                        line
+                    }
+                },
+                |i| parse!{i;
+
+                    space_or_tab();
+
+                    let line = non_empty_line();
+
+                    ret {
+                        let line: String = format!("{:>11} {}",
+                            "",
+                            String::from_utf8_lossy(line.as_slice()).trim()
+                        );
+                        line
+                    }
                 }
-            }
+            )
+
         );
 
         ret {
