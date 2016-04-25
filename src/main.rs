@@ -739,6 +739,15 @@ fn print_task(journal: &GTD, task: &Task) {
         println!("{:>11} {}", "Priority:".bold().blue(), task.priority);
     }
 
+    match task.note {
+        None => {},
+        Some(ref note) => {
+            println!("{:>11} {}",
+                "Notes:".bold().blue(),
+                note
+            );
+        }
+    }
 
 }
 
@@ -769,6 +778,7 @@ struct Task {
 
     /* props */
     title: Option<String>,
+    note: Option<String>,
     created_at: Option<NaiveDateTime>,
     done_at: Option<NaiveDateTime>,
     due_at: Option<NaiveDateTime>,
@@ -793,6 +803,7 @@ impl Task {
 
             /* props */
             title: None,
+            note: None,
             created_at: None,
             done_at: None,
             due_at: None,
@@ -1559,6 +1570,9 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                             TaskBlock::Title(title) => {
                                 current_task.title = Some(title);
                             },
+                            TaskBlock::Note(note) => {
+                                current_task.note = Some(note);
+                            },
                             TaskBlock::Project(project) => {
 
                                 if project.len() > 0 {
@@ -1816,6 +1830,7 @@ enum TaskBlock {
     Contexts(Vec<String>),
     Tags(Vec<String>),
     Flag(bool),
+    Note(String),
 
     // TODO: complete
     ID(String)
@@ -1826,6 +1841,7 @@ fn task_block(i: Input<u8>) -> U8Result<LineToken> {
     parse!{i;
 
         let line: TaskBlock = task_title() <|>
+            task_note() <|>
             task_priority() <|>
             task_project() <|>
             task_flag() <|>
@@ -1880,6 +1896,53 @@ fn task_title(input: Input<u8>) -> U8Result<TaskBlock> {
             TaskBlock::Title(title)
         }
     }
+}
+
+fn task_note(input: Input<u8>) -> U8Result<TaskBlock> {
+
+    parse!{input;
+
+        // aliases
+        string_ignore_case("notes".as_bytes()) <|>
+        string_ignore_case("note".as_bytes()) <|>
+        string_ignore_case("description".as_bytes()) <|>
+        string_ignore_case("desc".as_bytes());
+
+        token(b':');
+
+        skip_many(|i| space_or_tab(i));
+
+        let line = non_empty_line();
+
+        let other_lines: Vec<String> = many(
+            |i| parse!{i;
+
+                space_or_tab();
+                skip_many(|i| space_or_tab(i));
+
+                let line = non_empty_line();
+
+                ret {
+                    let line: String = format!("{:>11} {}", "", String::from_utf8_lossy(line.as_slice()).trim());
+                    line
+                }
+            }
+        );
+
+        ret {
+            let line: String = format!("{}", String::from_utf8_lossy(line.as_slice()).trim());
+            let other_lines = other_lines.join("\n");
+
+            let note = if other_lines.len() > 0 {
+                format!("{}\n{}", line, other_lines)
+            } else {
+                format!("{}", line)
+            };
+
+            TaskBlock::Note(note)
+        }
+    }
+
 }
 
 fn task_time(input: Input<u8>) -> U8Result<TaskBlock> {
