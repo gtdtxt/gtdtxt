@@ -1894,7 +1894,17 @@ fn task_note(input: Input<u8>) -> U8Result<TaskBlock> {
 
         skip_many(|i| space_or_tab(i));
 
-        let line = non_empty_line();
+        let line = or(
+            |i| non_empty_line(i),
+            |i| parse!{i;
+                terminating();
+
+                ret {
+                    let line: Vec<u8> = vec![];
+                    line
+                }
+            }
+        );
 
         let other_lines: Vec<String> = many(
             |i| or(i,
@@ -1946,7 +1956,12 @@ fn task_note(input: Input<u8>) -> U8Result<TaskBlock> {
             let other_lines = other_lines.join("\n");
 
             let note = if other_lines.len() > 0 {
-                format!("{}\n{}", line, other_lines)
+                if line.len() > 0 {
+                    format!("{}\n{}", line, other_lines)
+                } else {
+                    format!("{}", other_lines.trim())
+                }
+
             } else {
                 format!("{}", line)
             };
