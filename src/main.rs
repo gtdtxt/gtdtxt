@@ -1123,7 +1123,7 @@ impl GTD {
                     Some(ref project_path) => {
                         self.should_filter_project(project_path)
                     },
-                    None => unsafe { debug_unreachable!() }
+                    None => true
                 };
 
                 if should_filter {
