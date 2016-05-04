@@ -239,12 +239,24 @@ task: buy milk
 context: ,,,supermarket,,,, real life,,,
 contexts: ,,,supermarket,,,, real life,,,
 
-# progress tasks with time.
-# this combos well with pomodoro technique/system
+# You may track how much time you spent on a task.
+#
+# This combos well with the Pomodoro technique/system.
 
 task: buy milk
 time: 5 hr
 time: 25 mins
+
+
+# Don't break the chain
+# See: http://lifehacker.com/281626/jerry-seinfelds-productivity-secret
+#
+# Denote the date and time you previously touched on a task.
+task: run
+chain: May 2, 2016
+chain: May 4, 2016
+
+
 
 #####
 # Incubating features

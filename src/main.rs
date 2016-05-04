@@ -735,6 +735,33 @@ fn print_task(journal: &GTD, task: &Task) {
 
     }
 
+    if task.has_chain() {
+        let chain_at: NaiveDateTime = task.get_chain();
+
+        let rel_time = relative_time(chain_at.timestamp(), Local::now().naive_local().timestamp());
+
+        let rel_time = match rel_time {
+            RelativeTime::Now(_, rel_time) => {
+                let rel_time = format!("({})", rel_time);
+                rel_time.red()
+            },
+            RelativeTime::Past(_, rel_time) => {
+                let rel_time = format!("({})", rel_time);
+                rel_time.bold().red()
+            },
+            RelativeTime::Future(_, rel_time) => {
+                let rel_time = format!("({})", rel_time);
+                rel_time.bold().green()
+            }
+        };
+
+        println!("{:>11} {} {}",
+            "Last chain:".bold().blue(),
+            chain_at.format("%B %e, %Y %-l:%M %p"),
+            rel_time
+        );
+    }
+
     if task.priority != 0 {
         println!("{:>11} {}", "Priority:".bold().blue(), task.priority);
     }
@@ -781,6 +808,7 @@ struct Task {
     note: Option<String>,
     created_at: Option<NaiveDateTime>,
     done_at: Option<NaiveDateTime>,
+    chains: Option<BTreeMap<NaiveDateTime, bool>>,
     due_at: Option<NaiveDateTime>,
     defer: Option<Defer>,
     status: Option<Status>,
@@ -806,6 +834,7 @@ impl Task {
             note: None,
             created_at: None,
             done_at: None,
+            chains: None,
             due_at: None,
             defer: None,
             status: None,
@@ -835,6 +864,34 @@ impl Task {
         };
 
         return false;
+    }
+
+    fn has_chain(&self) -> bool {
+
+        if self.chains.is_none() {
+            return false;
+        }
+
+        match self.chains {
+            None => unsafe { debug_unreachable!() },
+            Some(ref tree) => {
+                return tree.len() > 0;
+            }
+        }
+    }
+
+    fn get_chain(&self) -> NaiveDateTime {
+
+        match self.chains {
+            None => unsafe { debug_unreachable!() },
+            Some(ref tree) => {
+                // see: http://stackoverflow.com/a/33699340/412627
+                // let (key, _) = tree.iter().last().unwrap();
+                let (key, _) = tree.iter().next_back().unwrap();
+
+                return key.clone();
+            }
+        }
     }
 
     fn debug_range_string(&self) -> String {
@@ -1600,6 +1657,22 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                                 let done_at: NaiveDateTime = done_at;
                                 current_task.done_at = Some(done_at);
                             },
+                            TaskBlock::Chain(chain_at) => {
+                                let chain_at: NaiveDateTime = chain_at;
+                                match current_task.chains {
+                                    None => {
+
+                                        let mut tree = BTreeMap::new();
+                                        tree.insert(chain_at, true);
+
+                                        current_task.chains = Some(tree);
+
+                                    },
+                                    Some(ref mut tree) => {
+                                        tree.insert(chain_at, true);
+                                    }
+                                };
+                            },
                             TaskBlock::Status(status) => {
 
                                 current_task.status = Some(status);
@@ -1831,6 +1904,7 @@ enum TaskBlock {
     Title(String),
     Created(NaiveDateTime),
     Done(NaiveDateTime),
+    Chain(NaiveDateTime),
     Due(NaiveDateTime),
     Defer(Defer),
     Priority(i64),
@@ -1857,6 +1931,7 @@ fn task_block(i: Input<u8>) -> U8Result<LineToken> {
             task_flag() <|>
             task_created() <|>
             task_done() <|>
+            task_chain() <|>
             task_status() <|>
             task_due() <|>
             task_defer() <|>
@@ -2108,6 +2183,26 @@ fn task_done(input: Input<u8>) -> U8Result<TaskBlock> {
         let line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
 
         ret TaskBlock::Done(done_at)
+    }
+}
+
+fn task_chain(input: Input<u8>) -> U8Result<TaskBlock> {
+
+    parse!{input;
+
+        string_ignore_case("chain".as_bytes());
+
+        token(b':');
+
+        look_ahead(|i| non_empty_line(i));
+
+        skip_many(|i| space_or_tab(i));
+
+        let chain_at = parse_datetime(false);
+
+        let line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+
+        ret TaskBlock::Chain(chain_at)
     }
 }
 
