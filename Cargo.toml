@@ -1,6 +1,6 @@
 [package]
 name = "gtdtxt"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["Alberto Leal <mailforalberto@gmail.com>"]
 
 [dependencies.debug_unreachable]

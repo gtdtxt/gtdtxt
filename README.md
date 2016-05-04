@@ -6,7 +6,7 @@ gtdtxt
 ![](screenshot.png)
 
 ```
-gtdtxt v0.5.0 (semver.org)
+gtdtxt v0.6.0 (semver.org)
 Alberto Leal <mailforalberto@gmail.com> (github.com/dashed)
 CLI app to parse a human-readable text file for managing GTD workflow
 
@@ -28,9 +28,18 @@ FLAGS:
     -V, --version                     Prints version information
 
 OPTIONS:
-    -c, --filter-by-context <filter-by-context>    Filter using given context.
-    -p, --filter-by-project <filter-by-project>    Filter using given project path.
-    -t, --filter-by-tag <filter-by-tag>            Filter using given tag.
+    -w, --due-within <due-within>
+        Display tasks due within a time duration.
+        Example: 2 days 4 hrs
+    -c, --filter-by-context <filter-by-context>
+        Filter using given context or list of comma separated contexts.
+        Example: phone, computer, internet connection, office
+    -p, --filter-by-project <filter-by-project>
+        Filter using given project path.
+        Example: path / to / project
+    -t, --filter-by-tag <filter-by-tag>
+        Filter using given tag or list of comma separated tags.
+        Example: chore, art, to watch
 
 ARGS:
     <path to gtdtxt file>    Path to gtdtxt file.
