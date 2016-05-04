@@ -32,6 +32,7 @@ use chrono::datetime::DateTime;
 use chrono::naive::datetime::NaiveDateTime;
 use chrono::naive::date::NaiveDate;
 use chrono::naive::time::NaiveTime;
+use chrono::duration::Duration;
 
 // TODO: reorg this
 use chomp::{SimpleResult, Error, ParseError, ParseResult};
@@ -52,6 +53,15 @@ fn main() {
         .version("v0.5.0 (semver.org)") // semver semantics
         .about("CLI app to parse a human-readable text file for managing GTD workflow")
         .author("Alberto Leal <mailforalberto@gmail.com> (github.com/dashed)")
+        .arg(
+            Arg::with_name("due-within")
+            .help("Display tasks due within a time duration.")
+            .short("w")
+            .long("due-within")
+            .required(false)
+            .takes_value(true)
+            .multiple(false)
+        )
         .arg(
             Arg::with_name("hide-overdue")
             .help("Hide overdue tasks.")
@@ -193,6 +203,24 @@ fn main() {
     let base_root = format!("{}", env::current_dir().unwrap().display());
     let mut journal = GTD::new(base_root);
 
+    // due within filter
+    if let Some(due_within) = cmd_matches.value_of("due-within") {
+
+        let due_within = due_within.trim();
+
+        match parse_only(|i| multiple_time_range(i), due_within.as_bytes()) {
+            Ok(mut result) => {
+                journal.due_within = Duration::seconds(result as i64);
+            },
+            Err(e) => {
+                println!("Unable to parse value to option `--due-within`: {}", due_within);
+                process::exit(1);
+                // TODO: refactor
+                // panic!("{:?}", e);
+            }
+        }
+    }
+
     // project path filters
     if let Some(project_paths) = cmd_matches.values_of("filter-by-project") {
         for project_path in project_paths {
@@ -278,17 +306,37 @@ fn main() {
 
     // Display tasks
 
+    let mut display_divider = false;
+
+    if journal.due_within.num_seconds() > 0 {
+
+        println!("{:>11} {} {}",
+            "",
+            "Displaying tasks due within".bold().white(),
+            Timerange::new(journal.due_within.num_seconds() as u64).print(10).white().bold()
+        );
+
+        display_divider = true;
+    }
+
     if journal.show_only_flagged {
+
         println!("{:>11} {}",
             "",
-            "Displaying only flagged tasks.".bold().yellow()
+            "Displaying only flagged tasks.".bold().white()
         );
-        println!("");
+        display_divider = true;
+
     } else if journal.hide_flagged {
+
         println!("{:>11} {}",
             "",
-            "Hiding flagged tasks.".bold().yellow()
+            "Hiding flagged tasks.".bold().white()
         );
+        display_divider = true;
+    }
+
+    if display_divider {
         println!("");
     }
 
@@ -927,6 +975,7 @@ struct GTD {
     sort_overdue_by_priority: bool,
     filter_by_tags: bool,
     filter_by_contexts: bool,
+    due_within: Duration,
 
     /* data */
 
@@ -1004,6 +1053,7 @@ impl GTD {
             sort_overdue_by_priority: false,
             filter_by_tags: false,
             filter_by_contexts: false,
+            due_within: Duration::seconds(0),
 
             /* data */
 
@@ -1365,19 +1415,7 @@ impl GTD {
                 return false;
             },
             Some(ref due_at) => {
-                let rel_time = relative_time(due_at.timestamp(), Local::now().naive_local().timestamp());
-
-                match rel_time {
-                    RelativeTime::Now(rel_time, _) => {
-                        return true;
-                    },
-                    RelativeTime::Past(rel_time, _) => {
-                        return true;
-                    },
-                    RelativeTime::Future(rel_time, _) => {
-                        return false;
-                    }
-                };
+                return (Local::now().naive_local().timestamp() + self.due_within.num_seconds()) >= due_at.timestamp();
             }
         }
 
@@ -1391,19 +1429,7 @@ impl GTD {
                 return;
             },
             Some(ref due_at) => {
-                let rel_time = relative_time(due_at.timestamp(), Local::now().naive_local().timestamp());
-
-                let rel_time = match rel_time {
-                    RelativeTime::Now(rel_time, _) => {
-                        rel_time
-                    },
-                    RelativeTime::Past(rel_time, _) => {
-                        rel_time
-                    },
-                    RelativeTime::Future(rel_time, _) => {
-                        return;
-                    }
-                };
+                let rel_time = due_at.timestamp() - Local::now().naive_local().timestamp();
 
                 let encoded_key = if self.sort_overdue_by_priority {
                     GTD::encode_priority(task.priority) as i64
@@ -2068,20 +2094,12 @@ fn task_time(input: Input<u8>) -> U8Result<TaskBlock> {
 
         skip_many(|i| space_or_tab(i));
 
-        let time: Vec<u64> = many1(|i| parse!{
-            i;
-            skip_many(|i| space_or_tab(i));
-            let range = time_range();
-            ret range
-        });
+        let time: u64 = multiple_time_range();
 
 
         let nothing: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
 
-        ret {
-            let time = time.iter().fold(0, |mut sum, &val| {sum += val; sum});
-            TaskBlock::Time(time)
-        }
+        ret TaskBlock::Time(time)
     }
 }
 
@@ -2742,6 +2760,24 @@ fn end_of_line(i: Input<u8>) -> U8Result<&[u8]> {
 }
 
 /* time range parsers */
+
+fn multiple_time_range(i: Input<u8>) -> U8Result<u64> {
+
+    parse!{i;
+
+        let time: Vec<u64> = many1(|i| parse!{
+            i;
+            skip_many(|i| space_or_tab(i));
+            let range = time_range();
+            ret range
+        });
+
+        ret {
+            let time = time.iter().fold(0, |mut sum, &val| {sum += val; sum});
+            time
+        }
+    }
+}
 
 fn time_range(i: Input<u8>) -> U8Result<u64> {
     parse!{i;
