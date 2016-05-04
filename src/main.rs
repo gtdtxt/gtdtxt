@@ -478,7 +478,7 @@ fn main() {
 
     println!("{:>20} {}",
         "Executed at".purple(),
-        format!("{}", Local::now().naive_local().format("%B %e, %Y %-l:%M:%S %p")).purple()
+        format!("{}", Local::now().naive_local().format("%B %-d, %Y %-l:%M:%S %p")).purple()
     );
 
 }
@@ -569,7 +569,7 @@ fn print_task(journal: &GTD, task: &Task) {
 
             println!("{:>11} {} {}",
                 "Added at:".bold().blue(),
-                created_at.format("%B %e, %Y %-l:%M %p"),
+                created_at.format("%B %-d, %Y %-l:%M %p"),
                 rel_time
             );
         }
@@ -595,7 +595,7 @@ fn print_task(journal: &GTD, task: &Task) {
 
             println!("{:>11} {} {}",
                 "Done at:".bold().blue(),
-                done_at.format("%B %e, %Y %-l:%M %p"),
+                done_at.format("%B %-d, %Y %-l:%M %p"),
                 rel_time
             );
         }
@@ -633,7 +633,7 @@ fn print_task(journal: &GTD, task: &Task) {
 
                     println!("{:>11} {} {}",
                         "Defer till:".bold().blue(),
-                        defer_till.format("%B %e, %Y %-l:%M %p"),
+                        defer_till.format("%B %-d, %Y %-l:%M %p"),
                         rel_time
                     );
                 }
@@ -665,7 +665,7 @@ fn print_task(journal: &GTD, task: &Task) {
 
             println!("{:>11} {} {}",
                 "Due at:".bold().blue(),
-                due_at.format("%B %e, %Y %-l:%M %p"),
+                due_at.format("%B %-d, %Y %-l:%M %p"),
                 rel_time
             );
         }
@@ -757,7 +757,7 @@ fn print_task(journal: &GTD, task: &Task) {
 
         println!("{:>11} {} {}",
             "Last chain:".bold().blue(),
-            chain_at.format("%B %e, %Y %-l:%M %p"),
+            chain_at.format("%B %-d, %Y %-l:%M %p"),
             rel_time
         );
     }
