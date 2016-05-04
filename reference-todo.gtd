@@ -265,6 +265,9 @@ time: 25 dys
 time: 25 dy
 time: 25 d
 
+## You may mix time durations
+task: run
+time: 25min 1 day
 
 # Don't break the chain
 # See: http://lifehacker.com/281626/jerry-seinfelds-productivity-secret
