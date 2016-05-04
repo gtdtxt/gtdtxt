@@ -244,8 +244,26 @@ contexts: ,,,supermarket,,,, real life,,,
 # This combos well with the Pomodoro technique/system.
 
 task: buy milk
-time: 5 hr
+time: 25 seconds
+time: 25 second
+time: 25 secs
+time: 25 sec
+time: 25 s
+time: 25 minutes
+time: 25 minute
 time: 25 mins
+time: 25 min
+time: 25 m
+time: 25 hours
+time: 25 hour
+time: 25 hrs
+time: 25 hr
+time: 25 h
+time: 25 days
+time: 25 day
+time: 25 dys
+time: 25 dy
+time: 25 d
 
 
 # Don't break the chain

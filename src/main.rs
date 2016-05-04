@@ -2752,6 +2752,7 @@ fn time_range(i: Input<u8>) -> U8Result<u64> {
 
         let multiplier = time_range_unit_minutes() <|>
             time_range_unit_hours() <|>
+            time_range_unit_days() <|>
             time_range_unit_seconds();
 
         ret {
@@ -2800,6 +2801,21 @@ fn time_range_unit_hours(i: Input<u8>) -> U8Result<u64> {
         ret 3600
     }
 }
+
+fn time_range_unit_days(i: Input<u8>) -> U8Result<u64> {
+    parse!{i;
+
+        string_ignore_case("days".as_bytes()) <|>
+        string_ignore_case("day".as_bytes()) <|>
+        string_ignore_case("dys".as_bytes()) <|>
+        string_ignore_case("dy".as_bytes()) <|>
+        string_ignore_case("d".as_bytes());
+
+        // 86400 seconds in a day
+        ret 86400
+    }
+}
+
 
 /* datetime parsers */
 
