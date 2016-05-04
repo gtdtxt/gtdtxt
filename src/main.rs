@@ -55,7 +55,8 @@ fn main() {
         .author("Alberto Leal <mailforalberto@gmail.com> (github.com/dashed)")
         .arg(
             Arg::with_name("due-within")
-            .help("Display tasks due within a time duration.")
+            .next_line_help(true)
+            .help("Display tasks due within a time duration.{n}Example: 2 days 4 hrs")
             .short("w")
             .long("due-within")
             .required(false)
@@ -134,7 +135,8 @@ fn main() {
         )
         .arg(
             Arg::with_name("filter-by-project")
-            .help("Filter using given project path.")
+            .next_line_help(true)
+            .help("Filter using given project path.{n}Example: path / to / project")
             .short("p")
             .long("filter-by-project")
             .required(false)
@@ -150,7 +152,8 @@ fn main() {
         )
         .arg(
             Arg::with_name("filter-by-tag")
-            .help("Filter using given tag.")
+            .next_line_help(true)
+            .help("Filter using given tag or list of comma separated tags.{n}Example: chore, art, to watch")
             .short("t")
             .long("filter-by-tag")
             .required(false)
@@ -166,7 +169,8 @@ fn main() {
         )
         .arg(
             Arg::with_name("filter-by-context")
-            .help("Filter using given context.")
+            .next_line_help(true)
+            .help("Filter using given context or list of comma separated contexts.{n}Example: phone, computer, internet connection, office")
             .short("c")
             .long("filter-by-context")
             .required(false)
