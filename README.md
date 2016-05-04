@@ -49,11 +49,25 @@ ARGS:
 
 Inspired by [todotxt.com](http://todotxt.com/) and [ledger-cli.org](http://ledger-cli.org/).
 
+## Install
+
+Direct downloads are available through the [releases page](https://github.com/gtdtxt/gtdtxt/releases).
+
+If you're on OSX, you may install using [Homebrew](http://brew.sh/):
+
+```
+brew install https://raw.githubusercontent.com/gtdtxt/gtdtxt/master/gtdtxt.rb
+```
+
 ## Examples
 
 - [reference-todo.gtd](./reference-todo.gtd)
 - [examples/todo.gtd](./examples/todo.gtd)
 
+
+## Issues, Questions, Comments, etc?
+
+Feel free to open an issue within this GitHub repository: https://github.com/gtdtxt/gtdtxt/issues
 
 License
 =======
