@@ -69,6 +69,27 @@ fn main() {
             .multiple(false)
         )
         .arg(
+            Arg::with_name("hide-by-default")
+            .help("Hide tasks by default. Usage of flags / options are necessary to display tasks.")
+            .short("x")
+            .long("hide-by-default")
+            .required(false)
+        )
+        .arg(
+            Arg::with_name("show-overdue")
+            .help("Show overdue tasks. Used with --hide-by-default")
+            .short("a")
+            .long("show-overdue")
+            .required(false)
+        )
+        .arg(
+            Arg::with_name("show-incomplete")
+            .help("Show incomplete tasks. Used with --hide-by-default")
+            .short("b")
+            .long("show-incomplete")
+            .required(false)
+        )
+        .arg(
             Arg::with_name("hide-overdue")
             .help("Hide overdue tasks.")
             .short("o")
@@ -83,10 +104,10 @@ fn main() {
             .required(false)
         )
         .arg(
-            Arg::with_name("reveal-deferred")
+            Arg::with_name("show-deferred")
             .help("Reveal deferred tasks.")
             .short("r")
-            .long("reveal-deferred")
+            .long("show-deferred")
             .required(false)
         )
         .arg(
@@ -290,16 +311,21 @@ fn main() {
         }
     }
 
+    // flags
 
     journal.sort_overdue_by_priority = cmd_matches.is_present("sort-overdue-by-priority");
     journal.hide_flagged = cmd_matches.is_present("hide-flagged");
     journal.show_only_flagged = cmd_matches.is_present("show-only-flagged");
     journal.show_done = cmd_matches.is_present("show-done");
     journal.show_incubate = cmd_matches.is_present("show-incubate");
-    journal.dont_hide_deferred = cmd_matches.is_present("reveal-deferred");
+    journal.show_deferred = cmd_matches.is_present("show-deferred");
     journal.hide_overdue = cmd_matches.is_present("hide-overdue");
     journal.hide_nonproject_tasks = cmd_matches.is_present("hide-nonproject-tasks");
     journal.hide_incomplete = cmd_matches.is_present("hide-incomplete");
+
+    journal.hide_tasks_by_default = cmd_matches.is_present("hide-by-default");
+    journal.show_overdue = cmd_matches.is_present("show-overdue");
+    journal.show_incomplete = cmd_matches.is_present("show-incomplete");
 
 
     parse_file(None, path_to_file.clone(), &mut journal);
@@ -353,7 +379,7 @@ fn main() {
     let mut print_line: bool = false;
     let mut num_displayed: u32 = 0;
     let mut num_overdue = 0;
-    let mut num_inactive = 0;
+    let mut num_deferred = 0;
     let mut num_done = 0;
 
 
@@ -374,7 +400,7 @@ fn main() {
 
             num_displayed = num_displayed + print_vector_of_tasks(&journal, bucket);
 
-            if !print_line {
+            if !print_line && num_displayed > 0 {
                 print_line = true;
             }
         }
@@ -394,30 +420,30 @@ fn main() {
 
         num_displayed = num_displayed + print_vector_of_tasks(&journal, inbox);
 
-        if !print_line {
+        if !print_line && num_displayed > 0 {
             print_line = true;
         }
 
     }
 
-    // display incubated tasks ordered by priority
-    for (_, incubate) in journal.incubate.iter() {
+    // display deferred tasks ordered by priority
+    for (_, deferred) in journal.deferred.iter() {
 
-        if incubate.len() <= 0 {
+        if deferred.len() <= 0 {
             continue;
         }
 
-        num_inactive += incubate.len();
+        num_deferred += deferred.len();
 
-        if journal.show_incubate {
+        if journal.show_deferred || journal.hide_tasks_by_default {
 
             if print_line {
                 println!("");
             }
 
-            num_displayed = num_displayed + print_vector_of_tasks(&journal, incubate);
+            num_displayed = num_displayed + print_vector_of_tasks(&journal, deferred);
 
-            if !print_line {
+            if !print_line && num_displayed > 0 {
                 print_line = true;
             }
 
@@ -435,7 +461,7 @@ fn main() {
 
         num_done += done.len();
 
-        if journal.show_done {
+        if journal.show_done || journal.hide_tasks_by_default {
 
             if print_line {
                 println!("");
@@ -443,7 +469,7 @@ fn main() {
 
             num_displayed = num_displayed + print_vector_of_tasks(&journal, done);
 
-            if !print_line {
+            if !print_line && num_displayed > 0 {
                 print_line = true;
             }
 
@@ -509,8 +535,8 @@ fn main() {
     );
 
     println!("{:>20} {}",
-        "Tasks inactive".purple(),
-        format!("{}", num_inactive).bold().purple()
+        "Tasks deferred".purple(),
+        format!("{}", num_deferred).bold().purple()
     );
 
     println!("{:>20} {}",
@@ -976,7 +1002,7 @@ struct GTD {
     show_only_flagged: bool,
     show_done: bool,
     show_incubate: bool,
-    dont_hide_deferred: bool,
+    show_deferred: bool,
     hide_overdue: bool,
     hide_nonproject_tasks: bool,
     hide_incomplete: bool,
@@ -985,6 +1011,10 @@ struct GTD {
     filter_by_tags: bool,
     filter_by_contexts: bool,
     due_within: Duration,
+
+    hide_tasks_by_default: bool,
+    show_overdue: bool,
+    show_incomplete: bool,
 
     /* data */
 
@@ -1019,7 +1049,7 @@ struct GTD {
 
     // this contains any tasks that are inactive
     // priority -> vector of task ids ordered by recent appearance
-    incubate: BTreeMap<i64, Vec<i32>>,
+    deferred: BTreeMap<i64, Vec<i32>>,
 
     // this contains any tasks that are compelted
     // priority -> vector of task ids ordered by recent appearance
@@ -1039,10 +1069,10 @@ impl GTD {
         done.insert(0, Vec::new());
         let done = done;
 
-        let mut incubate = BTreeMap::new();
-        // incubate bucket at priority 0
-        incubate.insert(0, Vec::new());
-        let incubate = incubate;
+        let mut deferred = BTreeMap::new();
+        // deferred bucket at priority 0
+        deferred.insert(0, Vec::new());
+        let deferred = deferred;
 
         GTD {
 
@@ -1054,7 +1084,7 @@ impl GTD {
             show_only_flagged: false,
             show_done: false,
             show_incubate: false,
-            dont_hide_deferred: false,
+            show_deferred: false,
             hide_overdue: false,
             hide_nonproject_tasks: false,
             hide_incomplete: false,
@@ -1063,6 +1093,10 @@ impl GTD {
             filter_by_tags: false,
             filter_by_contexts: false,
             due_within: Duration::seconds(0),
+
+            hide_tasks_by_default: false,
+            show_overdue: false,
+            show_incomplete: false,
 
             /* data */
 
@@ -1079,7 +1113,7 @@ impl GTD {
             tasks: HashMap::new(),
             inbox: inbox,
             done: done,
-            incubate: incubate,
+            deferred: deferred,
             overdue: BTreeMap::new()
         }
     }
@@ -1220,36 +1254,131 @@ impl GTD {
             }
         }
 
+        // sort tasks into the proper data structure that shall be displayed
+        // to the user
 
-        // option: hide non-project tasks
-        // option:
-        if self.should_hide_task(&task) || self.hide_nonproject_tasks &&!task.project.is_some() {
-            // add task to look-up table
-            self.tasks.insert(new_id, task);
-            return;
+        // TODO: refactor eventually
+
+        if self.hide_tasks_by_default {
+
+            // hide task unless it satisfy [whitelist] filters
+
+            self.add_task_default_hidden(&task, new_id);
+
         } else {
 
-            // invariant: task belongs to a project
+            // default behaviour
 
-            // if necessary, apply any project path apply filters
+            self.add_task_default(&task, new_id);
+        }
 
-            if self.has_project_filters() {
+        // add task to look-up table
+        self.tasks.insert(new_id, task);
 
-                let should_filter: bool = match task.project {
-                    Some(ref project_path) => {
-                        self.should_filter_project(project_path)
-                    },
-                    None => true
-                };
+    }
 
-                if should_filter {
-                    // add task to look-up table
-                    self.tasks.insert(new_id, task);
-                    return;
+    fn add_task_default_hidden(&mut self, task: &Task, new_id: i32) {
+
+        if self.should_hide_task(&task) {
+            return;
+        }
+
+        // sort task by status and priority
+        match task.status {
+            None => {
+
+                if self.hide_incomplete {
+                    // hide task
+                } else if self.is_overdue(&task) {
+
+                    if self.show_overdue || task.due_at.is_some() {
+                        self.add_to_overdue(&task, new_id);
+                    }
+
+                } else if !self.should_defer(&task) {
+
+                    if self.show_incomplete {
+                        // add task to inbox
+                        self.add_to_inbox(task.priority, new_id);
+                    }
+
+                } else {
+
+                    if self.show_deferred {
+                        self.add_to_deferred(task.priority, new_id);
+                    }
+
                 }
 
-            }
+            },
+            Some(ref status) => {
 
+                match status {
+                    &Status::NotDone => {
+
+                        if self.hide_incomplete {
+                            // hide task
+                        } else if self.is_overdue(&task) {
+
+                            if self.show_overdue || task.due_at.is_some() {
+                                self.add_to_overdue(&task, new_id);
+                            }
+
+                        } else if !self.should_defer(&task) {
+
+                            if self.show_incomplete {
+                                // add task to inbox
+                                self.add_to_inbox(task.priority, new_id);
+                            }
+
+                        } else {
+
+                            if self.show_deferred {
+                                self.add_to_deferred(task.priority, new_id);
+                            }
+                        }
+                    },
+                    &Status::Incubate => {
+
+                        if self.hide_incomplete {
+                            // hide task
+                        } else if self.is_overdue(&task) {
+
+                            if self.show_overdue || task.due_at.is_some() {
+                                self.add_to_overdue(&task, new_id);
+                            }
+
+                        } else if !self.should_defer(&task) {
+
+                            if self.show_incomplete {
+                                // add task to inbox
+                                self.add_to_inbox(task.priority, new_id);
+                            }
+
+                        } else {
+
+                            if self.show_deferred {
+                                self.add_to_deferred(task.priority, new_id);
+                            }
+                        }
+                    },
+                    &Status::Done => {
+
+                        if self.show_done {
+                            self.add_to_done(task.priority, new_id);
+                        }
+
+                    }
+                }
+            }
+        }
+
+    }
+
+    fn add_task_default(&mut self, task: &Task, new_id: i32) {
+
+        if self.should_hide_task(&task) {
+            return;
         }
 
         // sort task by status and priority
@@ -1264,7 +1393,7 @@ impl GTD {
                     // add task to inbox
                     self.add_to_inbox(task.priority, new_id);
                 } else {
-                    self.add_to_incubate(task.priority, new_id);
+                    self.add_to_deferred(task.priority, new_id);
                 }
 
             },
@@ -1281,7 +1410,7 @@ impl GTD {
                             // add task to inbox
                             self.add_to_inbox(task.priority, new_id);
                         } else {
-                            self.add_to_incubate(task.priority, new_id);
+                            self.add_to_deferred(task.priority, new_id);
                         }
                     },
                     &Status::Incubate => {
@@ -1291,10 +1420,16 @@ impl GTD {
                         } else if self.is_overdue(&task) {
                             self.add_to_overdue(&task, new_id);
                         } else if !self.should_defer(&task) {
-                            // add task to inbox
-                            self.add_to_inbox(task.priority, new_id);
+
+                            if self.show_incubate {
+
+                                // add task to inbox
+                                self.add_to_inbox(task.priority, new_id);
+
+                            }
+
                         } else {
-                            self.add_to_incubate(task.priority, new_id);
+                            self.add_to_deferred(task.priority, new_id);
                         }
                     },
                     &Status::Done => {
@@ -1304,15 +1439,18 @@ impl GTD {
             }
         }
 
-        // add task to look-up table
-        self.tasks.insert(new_id, task);
     }
 
     fn should_hide_task(&mut self, task: &Task) -> bool {
 
+        if  self.hide_nonproject_tasks &&!task.project.is_some() {
+            return true;
+        }
+
         if self.filter_by_tags {
             match task.tags {
                 None => {
+                    // TODO: need flag to control this
                     return true;
                 },
                 Some(ref tags) => {
@@ -1326,6 +1464,7 @@ impl GTD {
         if self.filter_by_contexts {
             match task.contexts {
                 None => {
+                    // TODO: need flag to control this
                     return true;
                 },
                 Some(ref contexts) => {
@@ -1344,14 +1483,37 @@ impl GTD {
             return task.flag;
         }
 
+        // invariant: task belongs to a project
+
+        // if necessary, apply any project path apply filters
+
+        if self.has_project_filters() {
+
+            let should_filter: bool = match task.project {
+                Some(ref project_path) => {
+                    self.should_filter_project(project_path)
+                },
+                // TODO: need flag to control this
+                None => true
+            };
+
+            if should_filter {
+                return true;
+            }
+
+        }
+
+        // TODO: --show-flagged
+
         return false;
     }
 
     fn should_defer(&mut self, task: &Task) -> bool {
 
-        if self.dont_hide_deferred {
-            return false;
-        }
+        // TODO: necessary??
+        // if self.show_deferred {
+        //     return false;
+        // }
 
         match task.defer {
             None => {
@@ -1364,20 +1526,7 @@ impl GTD {
                         return true;
                     },
                     &Defer::Until(defer_till) => {
-                        let rel_time = relative_time(defer_till.timestamp(), Local::now().naive_local().timestamp());
-
-
-                        match rel_time {
-                            RelativeTime::Now(rel_time, _) => {
-                                return false;
-                            },
-                            RelativeTime::Past(rel_time, _) => {
-                                return false;
-                            },
-                            RelativeTime::Future(rel_time, _) => {
-                                return true;
-                            }
-                        };
+                        return defer_till.timestamp() > Local::now().naive_local().timestamp();
                     }
                 }
 
@@ -1477,16 +1626,16 @@ impl GTD {
         }
     }
 
-    fn add_to_incubate(&mut self, task_priority: i64, task_id: i32) {
+    fn add_to_deferred(&mut self, task_priority: i64, task_id: i32) {
 
-        self.ensure_priority_incubate(task_priority);
+        self.ensure_priority_deferred(task_priority);
 
         let task_priority: i64 = GTD::encode_priority(task_priority);
 
-        match self.incubate.get_mut(&task_priority) {
-            None => unsafe { debug_unreachable!("add_to_incubate: expected priority bucket not found") },
-            Some(incubate) => {
-                (*incubate).push(task_id);
+        match self.deferred.get_mut(&task_priority) {
+            None => unsafe { debug_unreachable!("add_to_deferred: expected priority bucket not found") },
+            Some(deferred) => {
+                (*deferred).push(task_id);
             }
         }
     }
@@ -1521,12 +1670,12 @@ impl GTD {
         }
     }
 
-    fn ensure_priority_incubate(&mut self, priority: i64) {
+    fn ensure_priority_deferred(&mut self, priority: i64) {
 
         let priority = GTD::encode_priority(priority);
 
-        if !self.incubate.contains_key(&priority) {
-            self.incubate.insert(priority, Vec::new());
+        if !self.deferred.contains_key(&priority) {
+            self.deferred.insert(priority, Vec::new());
         }
     }
 
