@@ -90,6 +90,13 @@ fn main() {
             .required(false)
         )
         .arg(
+            Arg::with_name("show-flagged")
+            .help("Show flagged tasks. Used with --hide-by-default")
+            .short("e")
+            .long("show-flagged")
+            .required(false)
+        )
+        .arg(
             Arg::with_name("hide-overdue")
             .help("Hide overdue tasks.")
             .short("o")
@@ -326,6 +333,7 @@ fn main() {
     journal.hide_tasks_by_default = cmd_matches.is_present("hide-by-default");
     journal.show_overdue = cmd_matches.is_present("show-overdue");
     journal.show_incomplete = cmd_matches.is_present("show-incomplete");
+    journal.show_flagged = cmd_matches.is_present("show-flagged");
 
 
     parse_file(None, path_to_file.clone(), &mut journal);
@@ -1015,6 +1023,7 @@ struct GTD {
     hide_tasks_by_default: bool,
     show_overdue: bool,
     show_incomplete: bool,
+    show_flagged: bool,
 
     /* data */
 
@@ -1097,6 +1106,7 @@ impl GTD {
             hide_tasks_by_default: false,
             show_overdue: false,
             show_incomplete: false,
+            show_flagged: false,
 
             /* data */
 
@@ -1285,9 +1295,9 @@ impl GTD {
 
         let shall_show: bool = task.tags.is_some() ||
                         task.contexts.is_some() ||
-                        task.project.is_some() || task.flag;
-
-
+                        task.project.is_some() ||
+                        self.show_only_flagged && task.flag ||
+                        self.show_flagged && task.flag;
 
         // sort task by status and priority
         match task.status {
@@ -1449,7 +1459,7 @@ impl GTD {
 
     fn should_hide_task(&mut self, task: &Task) -> bool {
 
-        if  self.hide_nonproject_tasks &&!task.project.is_some() {
+        if self.hide_nonproject_tasks &&!task.project.is_some() {
             return true;
         }
 
@@ -1481,13 +1491,6 @@ impl GTD {
             }
         }
 
-        if self.show_only_flagged {
-            return !task.flag;
-        }
-
-        if self.hide_flagged {
-            return task.flag;
-        }
 
         // invariant: task belongs to a project
 
@@ -1509,7 +1512,17 @@ impl GTD {
 
         }
 
-        // TODO: --show-flagged
+        if self.show_only_flagged {
+            return !task.flag;
+        }
+
+        if self.show_flagged && task.flag {
+            return false;
+        }
+
+        if self.hide_flagged {
+            return task.flag;
+        }
 
         return false;
     }
