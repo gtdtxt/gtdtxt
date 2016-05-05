@@ -181,11 +181,12 @@ fn main() {
             .required(false)
         )
         .arg(
-            Arg::with_name("filter-by-project")
+            Arg::with_name("only-with-project")
             .next_line_help(true)
-            .help("Filter using given project path.{n}Example: path / to / project")
+            .help("Show only tasks with given project path.{n}\
+                Example: path / to / project")
             .short("p")
-            .long("filter-by-project")
+            .long("only-with-project")
             .required(false)
             .takes_value(true)
             .multiple(true)
@@ -292,12 +293,12 @@ fn main() {
     }
 
     // project path filters
-    if let Some(project_paths) = cmd_matches.values_of("filter-by-project") {
+    if let Some(project_paths) = cmd_matches.values_of("only-with-project") {
         for project_path in project_paths {
 
             match parse_only(|i| string_list(i, b'/'), project_path.as_bytes()) {
                 Ok(mut result) => {
-                    journal.add_project_filter(&mut result);
+                    journal.add_project_only_filter(&mut result);
                 },
                 Err(e) => {
                     // TODO: refactor
@@ -1064,7 +1065,7 @@ struct GTD {
     hide_overdue: bool,
     hide_nonproject_tasks: bool,
     hide_incomplete: bool,
-    project_filter: Tree,
+    project_only_filter: Tree,
     project_whitelist: Tree,
     sort_overdue_by_priority: bool,
     filter_by_tags: bool,
@@ -1150,7 +1151,7 @@ impl GTD {
             hide_overdue: false,
             hide_nonproject_tasks: false,
             hide_incomplete: false,
-            project_filter: HashMap::new(),
+            project_only_filter: HashMap::new(),
             project_whitelist: HashMap::new(),
             sort_overdue_by_priority: false,
             filter_by_tags: false,
@@ -1216,24 +1217,24 @@ impl GTD {
         return false;
     }
 
-    fn add_project_filter(&mut self, path: &mut Vec<String>) {
-        traverse(path, &mut self.project_filter);
+    fn add_project_only_filter(&mut self, path: &mut Vec<String>) {
+        traverse(path, &mut self.project_only_filter);
     }
 
     fn add_project_whitelist(&mut self, path: &mut Vec<String>) {
         traverse(path, &mut self.project_whitelist);
     }
 
-    fn has_project_filters(&mut self) -> bool {
-        self.project_filter.len() > 0
+    fn has_project_only_filters(&mut self) -> bool {
+        self.project_only_filter.len() > 0
     }
 
     fn has_project_whitelist(&mut self) -> bool {
         self.project_whitelist.len() > 0
     }
 
-    fn should_filter_project(&mut self, path: &Vec<String>) -> bool {
-        return subpath_exists_in_tree(&(self.project_filter), path);
+    fn should_only_filter_project(&mut self, path: &Vec<String>) -> bool {
+        return subpath_exists_in_tree(&(self.project_only_filter), path);
     }
 
     fn should_whitelist_project(&mut self, path: &Vec<String>) -> bool {
@@ -1555,11 +1556,11 @@ impl GTD {
 
         // if necessary, apply any project path apply filters
 
-        if self.has_project_filters() {
+        if self.has_project_only_filters() {
 
             let should_filter: bool = match task.project {
                 Some(ref project_path) => {
-                    self.should_filter_project(project_path)
+                    self.should_only_filter_project(project_path)
                 },
                 // TODO: need flag to control this
                 None => true
