@@ -235,11 +235,12 @@ fn main() {
             })
         )
         .arg(
-            Arg::with_name("filter-by-context")
+            Arg::with_name("only-with-context")
             .next_line_help(true)
-            .help("Filter using given context or list of comma separated contexts.{n}Example: phone, computer, internet connection, office")
+            .help("Show only tasks that have any given list of comma separated contexts.{n}\
+                Example: phone, computer, internet connection, office{n}")
             .short("c")
-            .long("filter-by-context")
+            .long("only-with-context")
             .required(false)
             .takes_value(true)
             .multiple(true)
@@ -346,7 +347,7 @@ fn main() {
     }
 
     // context filters
-    if let Some(contexts) = cmd_matches.values_of("filter-by-context") {
+    if let Some(contexts) = cmd_matches.values_of("only-with-context") {
 
         for context in contexts {
 
@@ -354,10 +355,10 @@ fn main() {
                 Ok(mut result) => {
 
                     if result.len() > 0 {
-                        journal.filter_by_contexts = true;
+                        journal.filter_by_only_contexts = true;
                     }
 
-                    journal.add_context_filters(result);
+                    journal.add_only_context_filters(result);
                 },
                 Err(e) => {
                     // TODO: refactor
@@ -1069,7 +1070,7 @@ struct GTD {
     project_whitelist: Tree,
     sort_overdue_by_priority: bool,
     filter_by_tags: bool,
-    filter_by_contexts: bool,
+    filter_by_only_contexts: bool,
     due_within: Duration,
 
     hide_tasks_by_default: bool,
@@ -1093,7 +1094,7 @@ struct GTD {
 
     tags: HashSet<String>,
 
-    contexts: HashSet<String>,
+    only_contexts: HashSet<String>,
 
     // lookup table for tasks
     tasks: HashMap<i32, Task>,
@@ -1155,7 +1156,7 @@ impl GTD {
             project_whitelist: HashMap::new(),
             sort_overdue_by_priority: false,
             filter_by_tags: false,
-            filter_by_contexts: false,
+            filter_by_only_contexts: false,
             due_within: Duration::seconds(0),
 
             hide_tasks_by_default: false,
@@ -1175,7 +1176,7 @@ impl GTD {
             pulse: HashMap::new(),
 
             tags: HashSet::new(),
-            contexts: HashSet::new(),
+            only_contexts: HashSet::new(),
 
             tasks: HashMap::new(),
             inbox: inbox,
@@ -1201,15 +1202,15 @@ impl GTD {
         return false;
     }
 
-    fn add_context_filters(&mut self, contexts: Vec<String>) {
+    fn add_only_context_filters(&mut self, contexts: Vec<String>) {
         for context in contexts {
-            self.contexts.insert(context);
+            self.only_contexts.insert(context);
         }
     }
 
-    fn have_contexts(&mut self, contexts: &Vec<String>) -> bool {
+    fn have_only_contexts(&mut self, contexts: &Vec<String>) -> bool {
         for context in contexts {
-            if self.contexts.contains(context) {
+            if self.only_contexts.contains(context) {
                 return true;
             }
         }
@@ -1538,14 +1539,14 @@ impl GTD {
             }
         }
 
-        if self.filter_by_contexts {
+        if self.filter_by_only_contexts {
             match task.contexts {
                 None => {
                     // TODO: need flag to control this
                     return true;
                 },
                 Some(ref contexts) => {
-                    if !self.have_contexts(contexts) {
+                    if !self.have_only_contexts(contexts) {
                         return true;
                     }
                 }
