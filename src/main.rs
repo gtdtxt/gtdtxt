@@ -198,6 +198,23 @@ fn main() {
             })
         )
         .arg(
+            Arg::with_name("show-with-project")
+            .next_line_help(true)
+            .help("Show tasks with given project path. Used with --hide-by-default{n}Example: path / to / project")
+            .short("k")
+            .long("show-with-project")
+            .required(false)
+            .takes_value(true)
+            .multiple(true)
+            .validator(|path| {
+                let path = path.trim();
+                if path.len() <= 0 {
+                    return Err(String::from("invalid project path"));
+                }
+                return Ok(());
+            })
+        )
+        .arg(
             Arg::with_name("filter-by-tag")
             .next_line_help(true)
             .help("Filter using given tag or list of comma separated tags.{n}Example: chore, art, to watch")
@@ -279,6 +296,21 @@ fn main() {
             match parse_only(|i| string_list(i, b'/'), project_path.as_bytes()) {
                 Ok(mut result) => {
                     journal.add_project_filter(&mut result);
+                },
+                Err(e) => {
+                    // TODO: refactor
+                    panic!("{:?}", e);
+                }
+            }
+        }
+    }
+
+    if let Some(project_paths) = cmd_matches.values_of("show-with-project") {
+        for project_path in project_paths {
+
+            match parse_only(|i| string_list(i, b'/'), project_path.as_bytes()) {
+                Ok(mut result) => {
+                    journal.add_project_whitelist(&mut result);
                 },
                 Err(e) => {
                     // TODO: refactor
@@ -1031,6 +1063,7 @@ struct GTD {
     hide_nonproject_tasks: bool,
     hide_incomplete: bool,
     project_filter: Tree,
+    project_whitelist: Tree,
     sort_overdue_by_priority: bool,
     filter_by_tags: bool,
     filter_by_contexts: bool,
@@ -1116,6 +1149,7 @@ impl GTD {
             hide_nonproject_tasks: false,
             hide_incomplete: false,
             project_filter: HashMap::new(),
+            project_whitelist: HashMap::new(),
             sort_overdue_by_priority: false,
             filter_by_tags: false,
             filter_by_contexts: false,
@@ -1184,39 +1218,24 @@ impl GTD {
         traverse(path, &mut self.project_filter);
     }
 
+    fn add_project_whitelist(&mut self, path: &mut Vec<String>) {
+        traverse(path, &mut self.project_whitelist);
+    }
+
     fn has_project_filters(&mut self) -> bool {
         self.project_filter.len() > 0
     }
 
+    fn has_project_whitelist(&mut self) -> bool {
+        self.project_whitelist.len() > 0
+    }
+
     fn should_filter_project(&mut self, path: &Vec<String>) -> bool {
+        return subpath_exists_in_tree(&(self.project_filter), path);
+    }
 
-        let mut current = &self.project_filter;
-
-        for path_item in path {
-
-            if !current.contains_key(path_item) {
-                return true;
-            }
-
-            match current.get(path_item) {
-                None => {
-                    return true;
-                },
-                Some(node_type) => {
-                    match node_type {
-                        &NodeType::Leaf => {
-                            // path is super path
-                            return false;
-                        },
-                        &NodeType::Node(ref tree) => {
-                            current = tree;
-                        }
-                    }
-                }
-            };
-        }
-
-        return false;
+    fn should_whitelist_project(&mut self, path: &Vec<String>) -> bool {
+        return subpath_exists_in_tree(&(self.project_whitelist), path);
     }
 
     fn add_task(&mut self, task: Task) {
@@ -1313,13 +1332,30 @@ impl GTD {
             return;
         }
 
-        let shall_show: bool = task.tags.is_some() ||
+        let mut shall_show: bool = task.tags.is_some() ||
                         task.contexts.is_some() ||
                         task.project.is_some() ||
                         self.show_only_flagged && task.flag ||
                         self.show_flagged && task.flag ||
                         self.show_nonproject_tasks && task.project.is_none() ||
                         self.show_project_tasks && task.project.is_some();
+
+
+        if self.has_project_whitelist() {
+
+            let should_whitelist: bool = match task.project {
+                Some(ref project_path) => {
+                    self.should_whitelist_project(project_path)
+                },
+                // TODO: need flag to control this
+                None => true
+            };
+
+            if should_whitelist {
+                shall_show = true;
+            };
+        };
+
 
         // sort task by status and priority
         match task.status {
@@ -3729,6 +3765,37 @@ fn traverse(path: &mut [String], tree: &mut Tree) {
             }
         }
     }
+}
+
+fn subpath_exists_in_tree(tree: &Tree, path: &Vec<String>) -> bool {
+
+    let mut current = tree;
+
+    for path_item in path {
+
+        if !current.contains_key(path_item) {
+            return true;
+        }
+
+        match current.get(path_item) {
+            None => {
+                return true;
+            },
+            Some(node_type) => {
+                match node_type {
+                    &NodeType::Leaf => {
+                        // path is super path
+                        return false;
+                    },
+                    &NodeType::Node(ref tree) => {
+                        current = tree;
+                    }
+                }
+            }
+        };
+    }
+
+    return false;
 }
 
 /*
