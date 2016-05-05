@@ -97,6 +97,20 @@ fn main() {
             .required(false)
         )
         .arg(
+            Arg::with_name("show-nonproject-tasks")
+            .help("Show tasks that are not in a project. Used with --hide-by-default")
+            .short("g")
+            .long("show-nonproject-tasks")
+            .required(false)
+        )
+        .arg(
+            Arg::with_name("show-project-tasks")
+            .help("Show tasks that are not in a project. Used with --hide-by-default")
+            .short("j")
+            .long("show-project-tasks")
+            .required(false)
+        )
+        .arg(
             Arg::with_name("hide-overdue")
             .help("Hide overdue tasks.")
             .short("o")
@@ -334,6 +348,8 @@ fn main() {
     journal.show_overdue = cmd_matches.is_present("show-overdue");
     journal.show_incomplete = cmd_matches.is_present("show-incomplete");
     journal.show_flagged = cmd_matches.is_present("show-flagged");
+    journal.show_nonproject_tasks = cmd_matches.is_present("show-nonproject-tasks");
+    journal.show_project_tasks = cmd_matches.is_present("show-project-tasks");
 
 
     parse_file(None, path_to_file.clone(), &mut journal);
@@ -1024,6 +1040,8 @@ struct GTD {
     show_overdue: bool,
     show_incomplete: bool,
     show_flagged: bool,
+    show_nonproject_tasks: bool,
+    show_project_tasks: bool,
 
     /* data */
 
@@ -1107,6 +1125,8 @@ impl GTD {
             show_overdue: false,
             show_incomplete: false,
             show_flagged: false,
+            show_nonproject_tasks: false,
+            show_project_tasks: false,
 
             /* data */
 
@@ -1297,7 +1317,9 @@ impl GTD {
                         task.contexts.is_some() ||
                         task.project.is_some() ||
                         self.show_only_flagged && task.flag ||
-                        self.show_flagged && task.flag;
+                        self.show_flagged && task.flag ||
+                        self.show_nonproject_tasks && task.project.is_none() ||
+                        self.show_project_tasks && task.project.is_some();
 
         // sort task by status and priority
         match task.status {
@@ -1491,7 +1513,6 @@ impl GTD {
             }
         }
 
-
         // invariant: task belongs to a project
 
         // if necessary, apply any project path apply filters
@@ -1523,6 +1544,10 @@ impl GTD {
         if self.hide_flagged {
             return task.flag;
         }
+
+        // if self.show_project_tasks && task.project.is_some() {
+        //     return false;
+        // }
 
         return false;
     }
