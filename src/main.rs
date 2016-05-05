@@ -1283,6 +1283,12 @@ impl GTD {
             return;
         }
 
+        let shall_show: bool = task.tags.is_some() ||
+                        task.contexts.is_some() ||
+                        task.project.is_some() || task.flag;
+
+
+
         // sort task by status and priority
         match task.status {
             None => {
@@ -1291,20 +1297,20 @@ impl GTD {
                     // hide task
                 } else if self.is_overdue(&task) {
 
-                    if self.show_overdue || task.due_at.is_some() {
+                    if self.show_overdue || task.due_at.is_some() || shall_show {
                         self.add_to_overdue(&task, new_id);
                     }
 
                 } else if !self.should_defer(&task) {
 
-                    if self.show_incomplete {
+                    if self.show_incomplete || shall_show {
                         // add task to inbox
                         self.add_to_inbox(task.priority, new_id);
                     }
 
                 } else {
 
-                    if self.show_deferred {
+                    if self.show_deferred || shall_show {
                         self.add_to_deferred(task.priority, new_id);
                     }
 
@@ -1320,20 +1326,20 @@ impl GTD {
                             // hide task
                         } else if self.is_overdue(&task) {
 
-                            if self.show_overdue || task.due_at.is_some() {
+                            if self.show_overdue || task.due_at.is_some() || shall_show {
                                 self.add_to_overdue(&task, new_id);
                             }
 
                         } else if !self.should_defer(&task) {
 
-                            if self.show_incomplete {
+                            if self.show_incomplete || shall_show {
                                 // add task to inbox
                                 self.add_to_inbox(task.priority, new_id);
                             }
 
                         } else {
 
-                            if self.show_deferred {
+                            if self.show_deferred || shall_show {
                                 self.add_to_deferred(task.priority, new_id);
                             }
                         }
@@ -1344,27 +1350,27 @@ impl GTD {
                             // hide task
                         } else if self.is_overdue(&task) {
 
-                            if self.show_overdue || task.due_at.is_some() {
+                            if self.show_overdue || task.due_at.is_some() || shall_show {
                                 self.add_to_overdue(&task, new_id);
                             }
 
                         } else if !self.should_defer(&task) {
 
-                            if self.show_incomplete {
+                            if self.show_incomplete || shall_show {
                                 // add task to inbox
                                 self.add_to_inbox(task.priority, new_id);
                             }
 
                         } else {
 
-                            if self.show_deferred {
+                            if self.show_deferred || shall_show {
                                 self.add_to_deferred(task.priority, new_id);
                             }
                         }
                     },
                     &Status::Done => {
 
-                        if self.show_done {
+                        if self.show_done || shall_show {
                             self.add_to_done(task.priority, new_id);
                         }
 
