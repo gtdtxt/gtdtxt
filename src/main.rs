@@ -200,7 +200,9 @@ fn main() {
         .arg(
             Arg::with_name("show-with-project")
             .next_line_help(true)
-            .help("Show tasks with given project path. Used with --hide-by-default{n}Example: path / to / project")
+            .help("Show tasks with given project path.\
+                Used with --hide-by-default{n}\
+                Example: path / to / project")
             .short("k")
             .long("show-with-project")
             .required(false)
@@ -1581,6 +1583,7 @@ impl GTD {
             return task.flag;
         }
 
+        // TODO: redundant; remove
         // if self.show_project_tasks && task.project.is_some() {
         //     return false;
         // }
