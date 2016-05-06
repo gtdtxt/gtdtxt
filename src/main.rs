@@ -528,7 +528,7 @@ fn main() {
 
 
     let mut print_line: bool = false;
-    let mut num_displayed: u32 = 0;
+    let mut num_displayed = 0;
     let mut num_overdue = 0;
     let mut num_deferred = 0;
     let mut num_done = 0;
@@ -739,7 +739,7 @@ fn main() {
 
     println!("{:>20} {}",
         "Tasks not displayed".purple(),
-        format!("{}", journal.tasks.len() as u32 - num_displayed).bold().purple()
+        format!("{}", journal.tasks.len() as u64 - num_displayed).bold().purple()
     );
 
     println!("{:>20} {}",
@@ -756,10 +756,10 @@ fn main() {
 
 /* printers */
 
-fn print_vector_of_tasks(journal: &GTD, inbox: &Vec<i32>) -> u32 {
+fn print_vector_of_tasks(journal: &GTD, inbox: &Vec<u64>) -> u64 {
 
     let mut print_line: bool = false;
-    let mut num_displayed: u32 = 0;
+    let mut num_displayed = 0;
 
     for task_id in inbox {
 
@@ -1219,21 +1219,21 @@ struct GTD {
     // track files opened
     opened_files: HashSet<String>,
 
-    // path to file -> vector of task ids
-    files_with_completed_tasks: HashMap<String, Vec<i32>>,
+    // path to file -> FileStats
+    file_stats: HashMap<String, FileStats>,
 
-    pulse: HashMap<i64, Vec<i32>>,
+    pulse: HashMap<i64, Vec<u64>>,
 
     only_tags: HashSet<String>,
 
     only_contexts: HashSet<String>,
 
     // lookup table for tasks
-    tasks: HashMap<i32, Task>,
+    tasks: HashMap<u64, Task>,
 
     // this contains any tasks that are overdue
     // timestamp difference -> task id
-    overdue: BTreeMap<i64, Vec<i32>>,
+    overdue: BTreeMap<i64, Vec<u64>>,
 
     // this contains any tasks that are either due soon
     // timestamp difference -> task id
@@ -1241,15 +1241,15 @@ struct GTD {
 
     // inbox contain any tasks that do not have a project
     // priority -> vector of task ids ordered by recent appearance
-    inbox: BTreeMap<i64, Vec<i32>>,
+    inbox: BTreeMap<i64, Vec<u64>>,
 
     // this contains any tasks that are inactive
     // priority -> vector of task ids ordered by recent appearance
-    deferred: BTreeMap<i64, Vec<i32>>,
+    deferred: BTreeMap<i64, Vec<u64>>,
 
     // this contains any tasks that are compelted
     // priority -> vector of task ids ordered by recent appearance
-    done: BTreeMap<i64, Vec<i32>>
+    done: BTreeMap<i64, Vec<u64>>
 }
 
 impl GTD {
@@ -1307,7 +1307,7 @@ impl GTD {
             base_root: base_root,
             opened_files: HashSet::new(),
 
-            files_with_completed_tasks: HashMap::new(),
+            file_stats: HashMap::new(),
 
             pulse: HashMap::new(),
 
@@ -1433,7 +1433,7 @@ impl GTD {
         //     // println!("task.title: {}", title);
         // }
 
-        let new_id = self.next_task_id();
+        let new_id: u64 = self.next_task_id();
 
         match task.done_at {
             None => {},
@@ -1456,35 +1456,34 @@ impl GTD {
             }
         };
 
-        // track completed task by its source file
-        match task.status {
-            None => {},
-            Some(ref status) => {
+        match task.source_file {
+            None => unsafe { debug_unreachable!() },
+            Some(ref source_file) => {
+                match self.file_stats.get_mut(source_file) {
+                    None => unsafe { debug_unreachable!() },
+                    Some(file_stats) => {
 
-                match status {
-                    &Status::Done => {
-                        match task.source_file {
-                            None => unsafe { debug_unreachable!() },
-                            Some(ref source_file) => {
-                                match self.files_with_completed_tasks.get_mut(source_file) {
-                                    None => unsafe { debug_unreachable!() },
-                                    Some(bucket) => {
-                                        (*bucket).push(new_id);
-                                    }
+                        // track completed task by its source file
+                        match task.status {
+                            None => {},
+                            Some(ref status) => {
+
+                                match status {
+                                    &Status::Done => {
+                                        file_stats.add_task_id(new_id);
+                                    },
+                                    _ => {}
                                 }
                             }
-                        }
+                        };
 
-                    },
-                    _ => {}
-                }
+                    }
+                };
             }
-        }
+        };
 
-        // sort tasks into the proper data structure that shall be displayed
+        // sort tasks into various data structures (e.g. overdue, inbox, etc) that shall be displayed
         // to the user
-
-        // TODO: refactor eventually
 
         if self.hide_tasks_by_default {
 
@@ -1504,7 +1503,7 @@ impl GTD {
 
     }
 
-    fn add_task_default_hidden(&mut self, task: &Task, new_id: i32) {
+    fn add_task_default_hidden(&mut self, task: &Task, new_id: u64) {
 
         if self.should_hide_task(&task) {
             return;
@@ -1645,7 +1644,7 @@ impl GTD {
 
     }
 
-    fn add_task_default(&mut self, task: &Task, new_id: i32) {
+    fn add_task_default(&mut self, task: &Task, new_id: u64) {
 
         if self.should_hide_task(&task) {
             return;
@@ -1814,7 +1813,7 @@ impl GTD {
         return false;
     }
 
-    fn add_to_pulse(&mut self, done_at: &NaiveDateTime, task_id: i32) {
+    fn add_to_pulse(&mut self, done_at: &NaiveDateTime, task_id: u64) {
 
         let diff = Local::now().naive_local().timestamp() - done_at.timestamp();
 
@@ -1857,7 +1856,7 @@ impl GTD {
         false
     }
 
-    fn add_to_overdue(&mut self, task: &Task, task_id: i32) {
+    fn add_to_overdue(&mut self, task: &Task, task_id: u64) {
 
         match task.due_at {
             None => {
@@ -1889,7 +1888,7 @@ impl GTD {
 
     }
 
-    fn add_to_inbox(&mut self, task_priority: i64, task_id: i32) {
+    fn add_to_inbox(&mut self, task_priority: i64, task_id: u64) {
 
         self.ensure_priority_inbox(task_priority);
 
@@ -1903,7 +1902,7 @@ impl GTD {
         }
     }
 
-    fn add_to_deferred(&mut self, task_priority: i64, task_id: i32) {
+    fn add_to_deferred(&mut self, task_priority: i64, task_id: u64) {
 
         self.ensure_priority_deferred(task_priority);
 
@@ -1917,7 +1916,7 @@ impl GTD {
         }
     }
 
-    fn add_to_done(&mut self, task_priority: i64, task_id: i32) {
+    fn add_to_done(&mut self, task_priority: i64, task_id: u64) {
 
         self.ensure_priority_done(task_priority);
 
@@ -1932,8 +1931,8 @@ impl GTD {
     }
 
 
-    fn next_task_id(&mut self) -> i32 {
-        to_task_id(self.tasks.len() + 1) as i32
+    fn next_task_id(&mut self) -> u64 {
+        to_task_id(self.tasks.len() + 1) as u64
     }
 
     // TODO: refactor
@@ -2036,7 +2035,7 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
         process::exit(1);
     }
 
-    journal.files_with_completed_tasks.insert(tracked_path.clone(), Vec::new());
+    journal.file_stats.insert(tracked_path.clone(), FileStats::new());
 
     let mut num_of_lines_parsed = 0;
 
@@ -2272,15 +2271,18 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
         _ => {}
     };
 
-    match journal.files_with_completed_tasks.get_mut(&tracked_path) {
+    match journal.file_stats.get_mut(&tracked_path) {
         None => unsafe { debug_unreachable!() },
-        Some(bucket) => {
-            if (*bucket).len() > 0 && file_shall_not_contain_completed_tasks {
+        Some(file_stats) => {
+
+            let ref mut tasks = file_stats.tasks;
+
+            if tasks.len() > 0 && file_shall_not_contain_completed_tasks {
                 println!("Found {} completed tasks that are not supposed to be in file: {}",
-                    (*bucket).len(),
+                    tasks.len(),
                     tracked_path);
 
-                let task: &Task = journal.tasks.get((*bucket).first().unwrap()).unwrap();
+                let task: &Task = journal.tasks.get(tasks.first().unwrap()).unwrap();
 
                 println!("Found a completed task at lines: {} to {}",
                     task.task_block_range_start,
@@ -3829,16 +3831,38 @@ fn string_ignore_case<'a>(i: Input<'a, u8>, s: &[u8])
     i.replace(&b[s.len()..]).ret(d)
 }
 
+/* Filestats */
+
+#[derive(Debug)]
+struct FileStats {
+
+    tasks: Vec<u64>
+}
+
+impl FileStats {
+
+    fn new() -> FileStats {
+
+        FileStats {
+            tasks: Vec::new()
+        }
+    }
+
+    fn add_task_id(&mut self, new_id: u64) {
+        self.tasks.push(new_id);
+    }
+}
+
 /* helpers */
 
-fn count_tasks(inbox: &BTreeMap<i64, Vec<i32>>) -> u64 {
+fn count_tasks(inbox: &BTreeMap<i64, Vec<u64>>) -> u64 {
 
     let mut count = 0;
     for (_, inbox) in inbox.iter() {
-        count += inbox.len();
+        count += inbox.len() as u64;
     }
 
-    return count as u64;
+    return count;
 }
 
 fn to_task_id(len: usize) -> i32 {
