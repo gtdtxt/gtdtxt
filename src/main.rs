@@ -312,6 +312,10 @@ fn main() {
                     return Ok(());
                 }
             })
+        )
+        .subcommand(
+            SubCommand::with_name("stats")
+                .about("Display statistics")
         ).get_matches();
 
     let path_to_file: String = cmd_matches.value_of("path to gtdtxt file")
@@ -486,6 +490,113 @@ fn main() {
         println!("{:>20} {}", "Tasks found".purple(), format!("{}", journal.tasks.len()).bold().purple());
 
         println!("File validated.");
+
+        return;
+    }
+
+    if let Some(matches) = cmd_matches.subcommand_matches("stats") {
+
+        println!("{}", "Statistics by file".bold().purple().underline());
+        println!("");
+
+        if journal.file_stats.len() <= 0 {
+            println!("No files parsed.");
+            return;
+        }
+
+        let mut print_line: bool = false;
+
+        for (path, file_stats) in journal.file_stats {
+
+            if print_line {
+                println!("");
+            } else {
+                print_line = true;
+            }
+
+            let path = match Path::new(&path).strip_prefix(&journal.base_root) {
+                Err(_) => {
+                    format!("{}", path)
+                },
+                Ok(path) => {
+                    format!("./{}", path.display())
+                }
+            };
+
+            println!("{:>11} {}",
+                "Path:".bold().blue(),
+                path);
+
+            let total = file_stats.overdue_tasks.len() +
+                file_stats.inbox_tasks.len() +
+                file_stats.incubate_tasks.len() +
+                file_stats.deferred_tasks.len() +
+                file_stats.completed_tasks.len();
+
+            if total > 0 {
+                println!("{:>11} {}",
+                    "Total:".bold().blue(),
+                    total);
+            }
+
+            if file_stats.overdue_tasks.len() > 0 {
+                println!("{:>11} {}",
+                    "Overdue:".bold().blue(),
+                    file_stats.overdue_tasks.len());
+            }
+
+            if file_stats.inbox_tasks.len() > 0 {
+                println!("{:>11} {}",
+                    "Inbox:".bold().blue(),
+                    file_stats.inbox_tasks.len());
+            }
+
+            if file_stats.incubate_tasks.len() > 0 {
+                println!("{:>11} {}",
+                    "Incubated:".bold().blue(),
+                    file_stats.incubate_tasks.len());
+            }
+
+            if file_stats.deferred_tasks.len() > 0 {
+                println!("{:>11} {}",
+                    "Deferred:".bold().blue(),
+                    file_stats.deferred_tasks.len());
+            }
+
+            if file_stats.completed_tasks.len() > 0 {
+                println!("{:>11} {}",
+                    "Completed:".bold().blue(),
+                    file_stats.completed_tasks.len());
+            }
+
+            if file_stats.have_tags() {
+                println!("{:>11} {}",
+                    "Tags:".bold().blue(),
+                    file_stats.print_tags());
+            }
+
+            if file_stats.have_contexts() {
+                println!("{:>11} {}",
+                    "Contexts:".bold().blue(),
+                    file_stats.print_contexts());
+            }
+
+            if file_stats.have_projects() {
+                let mut first = true;
+                for path in file_stats.project_paths {
+
+                    if first {
+                        first = false;
+                        println!("{:>11} {}",
+                            "Projects:".bold().blue(), path);
+                        continue;
+                    }
+
+                    println!("{:>11} {}", "", path);
+                }
+            }
+
+        }
 
         return;
     }
@@ -1448,9 +1559,7 @@ impl GTD {
                     println!("Mayhaps you forgot to add: 'status: done'");
                     process::exit(1);
                 } else {
-
                     self.add_to_pulse(done_at, new_id);
-
                 }
 
             }
@@ -1459,26 +1568,91 @@ impl GTD {
         match task.source_file {
             None => unsafe { debug_unreachable!() },
             Some(ref source_file) => {
-                match self.file_stats.get_mut(source_file) {
-                    None => unsafe { debug_unreachable!() },
-                    Some(file_stats) => {
 
-                        // track completed task by its source file
-                        match task.status {
-                            None => {},
-                            Some(ref status) => {
+                match task.status {
+                    None => {
 
-                                match status {
-                                    &Status::Done => {
-                                        file_stats.add_task_id(new_id);
-                                    },
-                                    _ => {}
+                        if self.is_overdue(&task) {
+                            let file_stats = self.file_stats.get_mut(source_file).unwrap();
+                            file_stats.add_overdue_task_id(new_id);
+                        } else if !self.should_defer(&task) {
+                            let file_stats = self.file_stats.get_mut(source_file).unwrap();
+                            // add task to inbox
+                            file_stats.add_inbox_task_id(new_id);
+                        } else {
+                            let file_stats = self.file_stats.get_mut(source_file).unwrap();
+                            file_stats.add_deferred_task_id(new_id);
+                        }
+
+                    },
+                    Some(ref status) => {
+
+                        match status {
+                            &Status::NotDone => {
+                                if self.is_overdue(&task) {
+                                    let file_stats = self.file_stats.get_mut(source_file).unwrap();
+                                    file_stats.add_overdue_task_id(new_id);
+                                } else if !self.should_defer(&task) {
+                                    let file_stats = self.file_stats.get_mut(source_file).unwrap();
+                                    // add task to inbox
+                                    file_stats.add_inbox_task_id(new_id);
+                                } else {
+                                    let file_stats = self.file_stats.get_mut(source_file).unwrap();
+                                    file_stats.add_deferred_task_id(new_id);
                                 }
+                            },
+                            &Status::Incubate => {
+
+                                if self.is_overdue(&task) {
+                                    let file_stats = self.file_stats.get_mut(source_file).unwrap();
+                                    file_stats.add_overdue_task_id(new_id);
+                                } else if !self.should_defer(&task) {
+                                    let file_stats = self.file_stats.get_mut(source_file).unwrap();
+                                    file_stats.add_incubate_task_id(new_id);
+                                } else {
+                                    let file_stats = self.file_stats.get_mut(source_file).unwrap();
+                                    file_stats.add_deferred_task_id(new_id);
+                                }
+
+                            },
+                            &Status::Done => {
+                                let file_stats = self.file_stats.get_mut(source_file).unwrap();
+                                file_stats.add_finished_task_id(new_id);
                             }
-                        };
+                        }
+                    }
+                };
+
+                let file_stats = self.file_stats.get_mut(source_file).unwrap();
+
+                match task.tags {
+                    None => {},
+                    Some(ref tags) => {
+                        for tag in tags {
+                            file_stats.add_tag(tag.clone());
+                        }
 
                     }
                 };
+
+                match task.contexts {
+                    None => {},
+                    Some(ref contexts) => {
+
+                        for context in contexts {
+                            file_stats.add_context(context.clone());
+                        }
+
+                    }
+                };
+
+                match task.project {
+                    None => {},
+                    Some(ref project_path) => {
+                        file_stats.add_project_path(project_path.clone());
+                    }
+                };
+
             }
         };
 
@@ -1784,7 +1958,7 @@ impl GTD {
         return false;
     }
 
-    fn should_defer(&mut self, task: &Task) -> bool {
+    fn should_defer(&self, task: &Task) -> bool {
 
         // TODO: necessary??
         // if self.show_deferred {
@@ -1842,7 +2016,7 @@ impl GTD {
 
     }
 
-    fn is_overdue(&mut self, task: &Task) -> bool {
+    fn is_overdue(&self, task: &Task) -> bool {
 
         match task.due_at {
             None => {
@@ -2275,7 +2449,7 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
         None => unsafe { debug_unreachable!() },
         Some(file_stats) => {
 
-            let ref mut tasks = file_stats.tasks;
+            let ref mut tasks = file_stats.completed_tasks;
 
             if tasks.len() > 0 && file_shall_not_contain_completed_tasks {
                 println!("Found {} completed tasks that are not supposed to be in file: {}",
@@ -3836,7 +4010,15 @@ fn string_ignore_case<'a>(i: Input<'a, u8>, s: &[u8])
 #[derive(Debug)]
 struct FileStats {
 
-    tasks: Vec<u64>
+    overdue_tasks: Vec<u64>,
+    inbox_tasks: Vec<u64>,
+    completed_tasks: Vec<u64>,
+    deferred_tasks: Vec<u64>,
+    incubate_tasks: Vec<u64>,
+
+    tags: HashSet<String>,
+    contexts: HashSet<String>,
+    project_paths: HashSet<String>
 }
 
 impl FileStats {
@@ -3844,13 +4026,83 @@ impl FileStats {
     fn new() -> FileStats {
 
         FileStats {
-            tasks: Vec::new()
+
+            overdue_tasks: Vec::new(),
+            inbox_tasks: Vec::new(),
+            completed_tasks: Vec::new(),
+            deferred_tasks: Vec::new(),
+            incubate_tasks: Vec::new(),
+
+            tags: HashSet::new(),
+            contexts: HashSet::new(),
+            project_paths: HashSet::new()
         }
     }
 
-    fn add_task_id(&mut self, new_id: u64) {
-        self.tasks.push(new_id);
+    fn have_tags(&self) -> bool {
+        return self.tags.len() > 0;
     }
+
+    fn have_contexts(&self) -> bool {
+        return self.contexts.len() > 0;
+    }
+
+    fn have_projects(&self) -> bool {
+        return self.project_paths.len() > 0;
+    }
+
+    fn add_incubate_task_id(&mut self, new_id: u64) {
+        self.incubate_tasks.push(new_id);
+    }
+
+    fn add_overdue_task_id(&mut self, new_id: u64) {
+        self.overdue_tasks.push(new_id);
+    }
+
+    fn add_inbox_task_id(&mut self, new_id: u64) {
+        self.inbox_tasks.push(new_id);
+    }
+
+    fn add_finished_task_id(&mut self, new_id: u64) {
+        self.completed_tasks.push(new_id);
+    }
+
+    fn add_deferred_task_id(&mut self, new_id: u64) {
+        self.deferred_tasks.push(new_id);
+    }
+
+    fn add_tag(&mut self, tag: String) {
+        self.tags.insert(tag);
+    }
+
+    fn add_context(&mut self, context: String) {
+        self.contexts.insert(context);
+    }
+
+    fn add_project_path(&mut self, path: Vec<String>) {
+        self.project_paths.insert(path.join(" / "));
+    }
+
+    fn print_tags(&self) -> String {
+
+        let mut tags = Vec::new();
+
+        for tag in self.tags.iter() {
+            tags.push(tag.clone());
+        }
+        return tags.join(", ");
+    }
+
+    fn print_contexts(&self) -> String {
+
+        let mut contexts = Vec::new();
+
+        for context in self.contexts.iter() {
+            contexts.push(context.clone());
+        }
+        return contexts.join(", ");
+    }
+
 }
 
 /* helpers */
