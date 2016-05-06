@@ -20,17 +20,18 @@ For a pragmatic introduction to GTD, see:
 ## Usage
 
 ```
-gtdtxt v0.7.0 (semver.org)
+gtdtxt v0.8.0 (semver.org)
 Alberto Leal <mailforalberto@gmail.com> (github.com/dashed)
-CLI app to parse a human-readable text file for managing GTD (Getting Things Done) workflow
+CLI app to parse a human-readable text file for managing (Getting Things Done) workflow
 
 USAGE:
-    gtdtxt [FLAGS] [OPTIONS] <path to gtdtxt file>
+    gtdtxt [FLAGS] [OPTIONS] <path to gtdtxt file> [SUBCOMMAND]
 
 FLAGS:
     -h, --help                        Prints help information
     -x, --hide-by-default             Hide tasks by default. Usage of flags / options are necessary to display tasks.
     -F, --hide-flagged                Hide flagged tasks.
+    -u, --hide-headers                Hide headers. Shown by default.
     -I, --hide-incomplete             Hide incomplete tasks.
     -n, --hide-nonproject-tasks       Hide tasks not belonging to a project.
     -o, --hide-overdue                Hide overdue tasks.
@@ -79,6 +80,10 @@ OPTIONS:
 ARGS:
     <path to gtdtxt file>    Path to gtdtxt file.
 
+SUBCOMMANDS:
+    help     Prints this message or the help message of the given subcommand(s)
+    stats    Display statistics
+    
 ```
 
 ### Tutorial
