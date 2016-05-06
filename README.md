@@ -1,14 +1,28 @@
 gtdtxt
 ======
 
-> CLI app to parse a human-readable text file for managing GTD workflow.
+> CLI app to parse a human-readable text file for managing (Getting Things Done) workflow.
 
 ![](screenshot.png)
+
+gtdtxt is a command-line application that parses a to-do list in the form of human-readable text files.
+It is designed for managing (Getting Things Done) workflow.
+
+For a pragmatic introduction to GTD, see:
+
+- https://hamberg.no/gtd/
+
+
+[todotxt.com](http://todotxt.com/) and [ledger-cli.org](http://ledger-cli.org/) influenced the creation of gtdtxt.
+
+
+
+## Usage
 
 ```
 gtdtxt v0.7.0 (semver.org)
 Alberto Leal <mailforalberto@gmail.com> (github.com/dashed)
-CLI app to parse a human-readable text file for managing GTD workflow
+CLI app to parse a human-readable text file for managing GTD (Getting Things Done) workflow
 
 USAGE:
     gtdtxt [FLAGS] [OPTIONS] <path to gtdtxt file>
@@ -67,8 +81,12 @@ ARGS:
 
 ```
 
+### Tutorial
 
-Inspired by [todotxt.com](http://todotxt.com/) and [ledger-cli.org](http://ledger-cli.org/).
+Create an empty text file. Example: `todo.gtd`
+
+*TBA*
+
 
 ## Install
 
