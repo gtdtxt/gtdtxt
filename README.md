@@ -6,7 +6,7 @@ gtdtxt
 ![](screenshot.png)
 
 ```
-gtdtxt v0.6.0 (semver.org)
+gtdtxt v0.7.0 (semver.org)
 Alberto Leal <mailforalberto@gmail.com> (github.com/dashed)
 CLI app to parse a human-readable text file for managing GTD workflow
 
@@ -15,14 +15,20 @@ USAGE:
 
 FLAGS:
     -h, --help                        Prints help information
+    -x, --hide-by-default             Hide tasks by default. Usage of flags / options are necessary to display tasks.
     -F, --hide-flagged                Hide flagged tasks.
     -I, --hide-incomplete             Hide incomplete tasks.
     -n, --hide-nonproject-tasks       Hide tasks not belonging to a project.
     -o, --hide-overdue                Hide overdue tasks.
-    -r, --reveal-deferred             Reveal deferred tasks.
+    -r, --show-deferred               Reveal deferred tasks.
     -d, --show-done                   Show completed tasks.
+    -e, --show-flagged                Show flagged tasks. Used with --hide-by-default
+    -b, --show-incomplete             Show incomplete tasks. Used with --hide-by-default
     -i, --show-incubate               Show incubated tasks.
+    -g, --show-nonproject-tasks       Show tasks that are not in a project. Used with --hide-by-default
     -f, --show-only-flagged           Show only flagged tasks.
+    -a, --show-overdue                Show overdue tasks. Used with --hide-by-default
+    -j, --show-project-tasks          Show tasks that are not in a project. Used with --hide-by-default
     -z, --sort-overdue-by-priority    Sort overdue tasks by priority.
     -q, --validate                    Validate file and suppress any output.
     -V, --version                     Prints version information
@@ -31,14 +37,29 @@ OPTIONS:
     -w, --due-within <due-within>
         Display tasks due within a time duration.
         Example: 2 days 4 hrs
-    -c, --filter-by-context <filter-by-context>
-        Filter using given context or list of comma separated contexts.
+        
+    -c, --only-with-context <only-with-context>
+        Show only tasks that have any given list of comma separated contexts.
         Example: phone, computer, internet connection, office
-    -p, --filter-by-project <filter-by-project>
-        Filter using given project path.
+        
+    -p, --only-with-project <only-with-project>
+        Show only tasks with given project path.
         Example: path / to / project
-    -t, --filter-by-tag <filter-by-tag>
-        Filter using given tag or list of comma separated tags.
+        
+    -t, --only-with-tag <only-with-tag>
+        Show only tasks that have any given list of comma separated tags.
+        Example: chore, art, to watch
+        
+    -s, --show-with-context <show-with-context>
+        Show tasks with given list of comma separated contexts.Used with --hide-by-default
+        Example: phone, computer, internet connection, office
+        
+    -k, --show-with-project <show-with-project>
+        Show tasks with given project path.Used with --hide-by-default
+        Example: path / to / project
+        
+    -m, --show-with-tag <show-with-tag>
+        Show tasks with given list of comma separated tags.Used with --hide-by-default
         Example: chore, art, to watch
 
 ARGS:
