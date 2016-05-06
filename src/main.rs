@@ -273,6 +273,25 @@ fn main() {
             })
         )
         .arg(
+            Arg::with_name("show-with-context")
+            .next_line_help(true)
+            .help("Show tasks with given list of comma separated contexts.\
+                Used with --hide-by-default{n}\
+                Example: phone, computer, internet connection, office{n}")
+            .short("s")
+            .long("show-with-context")
+            .required(false)
+            .takes_value(true)
+            .multiple(true)
+            .validator(|tag| {
+                let tag = tag.trim();
+                if tag.len() <= 0 {
+                    return Err(String::from("invalid context"));
+                }
+                return Ok(());
+            })
+        )
+        .arg(
             Arg::with_name("path to gtdtxt file")
             .help("Path to gtdtxt file.")
             .required(true)
@@ -399,7 +418,28 @@ fn main() {
                         journal.filter_by_only_contexts = true;
                     }
 
-                    journal.add_only_context_filters(result);
+                    journal.add_context_only_filters(result);
+                },
+                Err(e) => {
+                    // TODO: refactor
+                    panic!("{:?}", e);
+                }
+            }
+        }
+    }
+
+    if let Some(contexts) = cmd_matches.values_of("show-with-context") {
+
+        for context in contexts {
+
+            match parse_only(|i| string_list(i, b','), context.as_bytes()) {
+                Ok(mut result) => {
+
+                    if result.len() > 0 {
+                        journal.filter_by_include_contexts = true;
+                    }
+
+                    journal.add_context_include_filters(result);
                 },
                 Err(e) => {
                     // TODO: refactor
@@ -1122,6 +1162,8 @@ struct GTD {
     show_project_tasks: bool,
     filter_by_include_tags: bool,
     include_tags: HashSet<String>,
+    filter_by_include_contexts: bool,
+    include_contexts: HashSet<String>,
 
     /* data */
 
@@ -1210,6 +1252,8 @@ impl GTD {
             show_project_tasks: false,
             filter_by_include_tags: false,
             include_tags: HashSet::new(),
+            filter_by_include_contexts: false,
+            include_contexts: HashSet::new(),
 
             /* data */
 
@@ -1263,15 +1307,31 @@ impl GTD {
         return false;
     }
 
-    fn add_only_context_filters(&mut self, contexts: Vec<String>) {
+    fn add_context_only_filters(&mut self, contexts: Vec<String>) {
         for context in contexts {
             self.only_contexts.insert(context);
+        }
+    }
+
+    fn add_context_include_filters(&mut self, contexts: Vec<String>) {
+        for context in contexts {
+            self.include_contexts.insert(context);
         }
     }
 
     fn have_only_contexts(&mut self, contexts: &Vec<String>) -> bool {
         for context in contexts {
             if self.only_contexts.contains(context) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    fn have_include_contexts(&mut self, contexts: &Vec<String>) -> bool {
+        for context in contexts {
+            if self.include_contexts.contains(context) {
                 return true;
             }
         }
@@ -1428,6 +1488,16 @@ impl GTD {
             }
         }
 
+        if self.filter_by_include_contexts {
+            match task.contexts {
+                None => {},
+                Some(ref contexts) => {
+                    if self.have_include_contexts(contexts) {
+                        shall_show = true;
+                    }
+                }
+            }
+        }
 
         // sort task by status and priority
         match task.status {
