@@ -1357,11 +1357,11 @@ impl GTD {
     }
 
     fn should_only_filter_project(&mut self, path: &Vec<String>) -> bool {
-        return subpath_exists_in_tree(&(self.project_only_filter), path);
+        return path_satisfies_tree(&(self.project_only_filter), path);
     }
 
     fn should_whitelist_project(&mut self, path: &Vec<String>) -> bool {
-        return subpath_exists_in_tree(&(self.project_whitelist), path);
+        return path_satisfies_tree(&(self.project_whitelist), path);
     }
 
     fn add_task(&mut self, task: Task) {
@@ -1464,13 +1464,14 @@ impl GTD {
             return;
         }
 
-        let mut shall_show: bool = task.tags.is_some() ||
-                        task.contexts.is_some() ||
-                        task.project.is_some() ||
-                        self.show_only_flagged && task.flag ||
-                        self.show_flagged && task.flag ||
-                        self.show_nonproject_tasks && task.project.is_none() ||
-                        self.show_project_tasks && task.project.is_some();
+        let mut shall_show: bool =
+            self.filter_by_only_tags && task.tags.is_some() ||
+            self.filter_by_only_contexts && task.contexts.is_some() ||
+            self.has_project_only_filters() && task.project.is_some() ||
+            self.show_only_flagged && task.flag ||
+            self.show_flagged && task.flag ||
+            self.show_nonproject_tasks && task.project.is_none() ||
+            self.show_project_tasks && task.project.is_some();
 
 
         if self.has_project_whitelist() {
@@ -1706,7 +1707,7 @@ impl GTD {
 
             let should_filter: bool = match task.project {
                 Some(ref project_path) => {
-                    self.should_only_filter_project(project_path)
+                    !self.should_only_filter_project(project_path)
                 },
                 // TODO: need flag to control this
                 None => true
@@ -3938,25 +3939,26 @@ fn traverse(path: &mut [String], tree: &mut Tree) {
     }
 }
 
-fn subpath_exists_in_tree(tree: &Tree, path: &Vec<String>) -> bool {
+// For any leaf in the tree, test if its path (from root to leaf) is a subpath of path.
+fn path_satisfies_tree(tree: &Tree, path: &Vec<String>) -> bool {
 
     let mut current = tree;
 
     for path_item in path {
 
         if !current.contains_key(path_item) {
-            return true;
+            return false;
         }
 
         match current.get(path_item) {
             None => {
-                return true;
+                return false;
             },
             Some(node_type) => {
                 match node_type {
                     &NodeType::Leaf => {
                         // path is super path
-                        return false;
+                        return true;
                     },
                     &NodeType::Node(ref tree) => {
                         current = tree;
@@ -3965,6 +3967,8 @@ fn subpath_exists_in_tree(tree: &Tree, path: &Vec<String>) -> bool {
             }
         };
     }
+
+    // None of the paths from root to leaf are subpaths of path
 
     return false;
 }
