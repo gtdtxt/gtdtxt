@@ -2185,6 +2185,17 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
             },
             Err(e) => {
                 // println!("{:?}", e);
+
+                match previous_state {
+                    ParseState::Task(task) => {
+                        println!("Error occured when parsing a task.");
+                        println!("The following was captured:");
+                        print_task(journal, &task);
+                    },
+                    _ => {}
+                };
+
+
                 println!("Error parsing starting at line {} in file: {}", num_of_lines_parsed + 1, tracked_path);
                 process::exit(1);
             }
@@ -2332,7 +2343,6 @@ fn task_block(i: Input<u8>) -> U8Result<LineToken> {
     parse!{i;
 
         let line: TaskBlock = task_title() <|>
-            task_note() <|>
             task_priority() <|>
             task_project() <|>
             task_flag() <|>
@@ -2345,7 +2355,8 @@ fn task_block(i: Input<u8>) -> U8Result<LineToken> {
             task_tags() <|>
             task_contexts() <|>
             task_time() <|>
-            task_id();
+            task_id() <|>
+            task_note();
 
         ret LineToken::Task(line)
     }
