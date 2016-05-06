@@ -236,6 +236,25 @@ fn main() {
             })
         )
         .arg(
+            Arg::with_name("show-with-tag")
+            .next_line_help(true)
+            .help("Show tasks with given list of comma separated tags.\
+                Used with --hide-by-default{n}\
+                Example: chore, art, to watch")
+            .short("m")
+            .long("show-with-tag")
+            .required(false)
+            .takes_value(true)
+            .multiple(true)
+            .validator(|tag| {
+                let tag = tag.trim();
+                if tag.len() <= 0 {
+                    return Err(String::from("invalid tag"));
+                }
+                return Ok(());
+            })
+        )
+        .arg(
             Arg::with_name("only-with-context")
             .next_line_help(true)
             .help("Show only tasks that have any given list of comma separated contexts.{n}\
@@ -338,6 +357,27 @@ fn main() {
                     }
 
                     journal.add_tag_only_filters(result);
+                },
+                Err(e) => {
+                    // TODO: refactor
+                    panic!("{:?}", e);
+                }
+            }
+        }
+    }
+
+    if let Some(tags) = cmd_matches.values_of("show-with-tag") {
+
+        for tag in tags {
+
+            match parse_only(|i| string_list(i, b','), tag.as_bytes()) {
+                Ok(mut result) => {
+
+                    if result.len() > 0 {
+                        journal.filter_by_include_tags = true;
+                    }
+
+                    journal.add_tag_include_filters(result);
                 },
                 Err(e) => {
                     // TODO: refactor
@@ -1080,6 +1120,8 @@ struct GTD {
     show_flagged: bool,
     show_nonproject_tasks: bool,
     show_project_tasks: bool,
+    filter_by_include_tags: bool,
+    include_tags: HashSet<String>,
 
     /* data */
 
@@ -1166,6 +1208,8 @@ impl GTD {
             show_flagged: false,
             show_nonproject_tasks: false,
             show_project_tasks: false,
+            filter_by_include_tags: false,
+            include_tags: HashSet::new(),
 
             /* data */
 
@@ -1193,9 +1237,25 @@ impl GTD {
         }
     }
 
+    fn add_tag_include_filters(&mut self, tags: Vec<String>) {
+        for tag in tags {
+            self.include_tags.insert(tag);
+        }
+    }
+
     fn have_only_tags(&mut self, tags: &Vec<String>) -> bool {
         for tag in tags {
             if self.only_tags.contains(tag) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    fn have_include_tags(&mut self, tags: &Vec<String>) -> bool {
+        for tag in tags {
+            if self.include_tags.contains(tag) {
                 return true;
             }
         }
@@ -1347,19 +1407,26 @@ impl GTD {
 
 
         if self.has_project_whitelist() {
-
-            let should_whitelist: bool = match task.project {
+            match task.project {
                 Some(ref project_path) => {
-                    self.should_whitelist_project(project_path)
+                    if self.should_whitelist_project(project_path) {
+                        shall_show = true;
+                    }
                 },
-                // TODO: need flag to control this
-                None => true
-            };
-
-            if should_whitelist {
-                shall_show = true;
+                None => {}
             };
         };
+
+        if self.filter_by_include_tags {
+            match task.tags {
+                None => {},
+                Some(ref tags) => {
+                    if self.have_include_tags(tags) {
+                        shall_show = true;
+                    }
+                }
+            }
+        }
 
 
         // sort task by status and priority
