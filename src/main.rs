@@ -1380,6 +1380,12 @@ impl GTD {
             process::exit(1);
         }
 
+        // if let Some(ref title) = task.title {
+        //     print_task(self, &task);
+        //     println!("------");
+        //     // println!("task.title: {}", title);
+        // }
+
         let new_id = self.next_task_id();
 
         match task.done_at {
@@ -2184,7 +2190,16 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                 break;
             },
             Err(e) => {
+
                 // println!("{:?}", e);
+
+                // match e {
+                //     StreamError::ParseError(input, _) => {
+                //     // ParseError::Error(input, _) => {
+                //         println!("StreamError::ParseError {}",  String::from_utf8_lossy(input));
+                //     },
+                //     _ => {}
+                // };
 
                 match previous_state {
                     ParseState::Task(task) => {
@@ -2398,7 +2413,6 @@ fn task_note(input: Input<u8>) -> U8Result<TaskBlock> {
         skip_many(|i| space_or_tab(i));
 
         let line = or(
-            |i| non_empty_line(i),
             |i| parse!{i;
                 terminating();
 
@@ -2406,11 +2420,27 @@ fn task_note(input: Input<u8>) -> U8Result<TaskBlock> {
                     let line: Vec<u8> = vec![];
                     line
                 }
-            }
+            },
+            // NOTE: this must be parsed last
+            |i| non_empty_line(i)
         );
 
         let other_lines: Vec<String> = many(
             |i| or(i,
+                |i| parse!{i;
+
+                    space_or_tab();
+
+                    let line = non_empty_line();
+
+                    ret {
+                        let line: String = format!("{:>11} {}",
+                            "",
+                            String::from_utf8_lossy(line.as_slice()).trim()
+                        );
+                        line
+                    }
+                },
                 |i| parse!{i;
 
                     // allow empty lines in note
@@ -2430,20 +2460,6 @@ fn task_note(input: Input<u8>) -> U8Result<TaskBlock> {
 
                         let line: String = format!("{}{:>11} {}",
                             filler,
-                            "",
-                            String::from_utf8_lossy(line.as_slice()).trim()
-                        );
-                        line
-                    }
-                },
-                |i| parse!{i;
-
-                    space_or_tab();
-
-                    let line = non_empty_line();
-
-                    ret {
-                        let line: String = format!("{:>11} {}",
                             "",
                             String::from_utf8_lossy(line.as_slice()).trim()
                         );
