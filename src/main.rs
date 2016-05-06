@@ -59,6 +59,13 @@ fn main() {
         .about("CLI app to parse a human-readable text file for managing (Getting Things Done) workflow")
         .author("Alberto Leal <mailforalberto@gmail.com> (github.com/dashed)")
         .arg(
+            Arg::with_name("hide-headers")
+            .help("Hide headers. Shown by default.")
+            .short("u")
+            .long("hide-headers")
+            .required(false)
+        )
+        .arg(
             Arg::with_name("due-within")
             .next_line_help(true)
             .help("Display tasks due within a time duration.{n}\
@@ -452,6 +459,8 @@ fn main() {
 
     // flags
 
+    let show_headers: bool = !cmd_matches.is_present("hide-headers");
+
     journal.sort_overdue_by_priority = cmd_matches.is_present("sort-overdue-by-priority");
     journal.hide_flagged = cmd_matches.is_present("hide-flagged");
     journal.show_only_flagged = cmd_matches.is_present("show-only-flagged");
@@ -526,6 +535,7 @@ fn main() {
 
 
     // display tasks that are overdue
+    let mut header_display: bool = show_headers;
     for (_, bucket) in journal.overdue.iter() {
 
         if bucket.len() <= 0 {
@@ -540,6 +550,14 @@ fn main() {
                 println!("");
             }
 
+            if header_display {
+                header_display = false;
+                println!("{}{}",
+                    "Overdue".white().bold().underline(),
+                    format!(" ({})", count_tasks(&journal.inbox)).white().bold().underline());
+                println!("");
+            }
+
             num_displayed = num_displayed + print_vector_of_tasks(&journal, bucket);
 
             if !print_line && num_displayed > 0 {
@@ -550,6 +568,8 @@ fn main() {
 
     // display inbox ordered by priority.
     // incubated tasks are not included
+    let mut header_display: bool = show_headers;
+
     for (_, inbox) in journal.inbox.iter() {
 
         if inbox.len() <= 0 {
@@ -557,6 +577,14 @@ fn main() {
         }
 
         if print_line {
+            println!("");
+        }
+
+        if header_display {
+            header_display = false;
+            println!("{}{}",
+                "Inbox".white().bold().underline(),
+                format!(" ({})", count_tasks(&journal.inbox)).white().bold().underline());
             println!("");
         }
 
@@ -569,6 +597,7 @@ fn main() {
     }
 
     // display deferred tasks ordered by priority
+    let mut header_display: bool = show_headers;
     for (_, deferred) in journal.deferred.iter() {
 
         if deferred.len() <= 0 {
@@ -580,6 +609,14 @@ fn main() {
         if journal.show_deferred || journal.hide_tasks_by_default {
 
             if print_line {
+                println!("");
+            }
+
+            if header_display {
+                header_display = false;
+                println!("{}{}",
+                    "Deferred".white().bold().underline(),
+                    format!(" ({})", count_tasks(&journal.inbox)).white().bold().underline());
                 println!("");
             }
 
@@ -595,6 +632,7 @@ fn main() {
 
 
     // display completed tasks
+    let mut header_display: bool = show_headers;
     for (_, done) in journal.done.iter() {
 
         if done.len() <= 0 {
@@ -606,6 +644,14 @@ fn main() {
         if journal.show_done || journal.hide_tasks_by_default {
 
             if print_line {
+                println!("");
+            }
+
+            if header_display {
+                header_display = false;
+                println!("{} {}",
+                    "Done".white().bold().underline(),
+                    format!(" ({})", count_tasks(&journal.inbox)).white().bold().underline());
                 println!("");
             }
 
@@ -3784,6 +3830,16 @@ fn string_ignore_case<'a>(i: Input<'a, u8>, s: &[u8])
 }
 
 /* helpers */
+
+fn count_tasks(inbox: &BTreeMap<i64, Vec<i32>>) -> u64 {
+
+    let mut count = 0;
+    for (_, inbox) in inbox.iter() {
+        count += inbox.len();
+    }
+
+    return count as u64;
+}
 
 fn to_task_id(len: usize) -> i32 {
     len as i32
