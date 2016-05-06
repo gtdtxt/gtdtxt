@@ -61,7 +61,8 @@ fn main() {
         .arg(
             Arg::with_name("due-within")
             .next_line_help(true)
-            .help("Display tasks due within a time duration.{n}Example: 2 days 4 hrs")
+            .help("Display tasks due within a time duration.{n}\
+                Example: 2 days 4 hrs{n}")
             .short("w")
             .long("due-within")
             .required(false)
@@ -184,7 +185,7 @@ fn main() {
             Arg::with_name("only-with-project")
             .next_line_help(true)
             .help("Show only tasks with given project path.{n}\
-                Example: path / to / project")
+                Example: path / to / project{n}")
             .short("p")
             .long("only-with-project")
             .required(false)
@@ -203,7 +204,7 @@ fn main() {
             .next_line_help(true)
             .help("Show tasks with given project path.\
                 Used with --hide-by-default{n}\
-                Example: path / to / project")
+                Example: path / to / project{n}")
             .short("k")
             .long("show-with-project")
             .required(false)
@@ -221,7 +222,7 @@ fn main() {
             Arg::with_name("only-with-tag")
             .next_line_help(true)
             .help("Show only tasks that have any given list of comma separated tags.{n}\
-                Example: chore, art, to watch")
+                Example: chore, art, to watch{n}")
             .short("t")
             .long("only-with-tag")
             .required(false)
