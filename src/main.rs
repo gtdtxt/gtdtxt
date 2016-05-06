@@ -218,11 +218,12 @@ fn main() {
             })
         )
         .arg(
-            Arg::with_name("filter-by-tag")
+            Arg::with_name("only-with-tag")
             .next_line_help(true)
-            .help("Filter using given tag or list of comma separated tags.{n}Example: chore, art, to watch")
+            .help("Show only tasks that have any given list of comma separated tags.{n}\
+                Example: chore, art, to watch")
             .short("t")
-            .long("filter-by-tag")
+            .long("only-with-tag")
             .required(false)
             .takes_value(true)
             .multiple(true)
@@ -325,7 +326,7 @@ fn main() {
     }
 
     // tag filters
-    if let Some(tags) = cmd_matches.values_of("filter-by-tag") {
+    if let Some(tags) = cmd_matches.values_of("only-with-tag") {
 
         for tag in tags {
 
@@ -333,10 +334,10 @@ fn main() {
                 Ok(mut result) => {
 
                     if result.len() > 0 {
-                        journal.filter_by_tags = true;
+                        journal.filter_by_only_tags = true;
                     }
 
-                    journal.add_tag_filters(result);
+                    journal.add_tag_only_filters(result);
                 },
                 Err(e) => {
                     // TODO: refactor
@@ -1069,7 +1070,7 @@ struct GTD {
     project_only_filter: Tree,
     project_whitelist: Tree,
     sort_overdue_by_priority: bool,
-    filter_by_tags: bool,
+    filter_by_only_tags: bool,
     filter_by_only_contexts: bool,
     due_within: Duration,
 
@@ -1092,7 +1093,7 @@ struct GTD {
 
     pulse: HashMap<i64, Vec<i32>>,
 
-    tags: HashSet<String>,
+    only_tags: HashSet<String>,
 
     only_contexts: HashSet<String>,
 
@@ -1155,7 +1156,7 @@ impl GTD {
             project_only_filter: HashMap::new(),
             project_whitelist: HashMap::new(),
             sort_overdue_by_priority: false,
-            filter_by_tags: false,
+            filter_by_only_tags: false,
             filter_by_only_contexts: false,
             due_within: Duration::seconds(0),
 
@@ -1175,7 +1176,7 @@ impl GTD {
 
             pulse: HashMap::new(),
 
-            tags: HashSet::new(),
+            only_tags: HashSet::new(),
             only_contexts: HashSet::new(),
 
             tasks: HashMap::new(),
@@ -1186,15 +1187,15 @@ impl GTD {
         }
     }
 
-    fn add_tag_filters(&mut self, tags: Vec<String>) {
+    fn add_tag_only_filters(&mut self, tags: Vec<String>) {
         for tag in tags {
-            self.tags.insert(tag);
+            self.only_tags.insert(tag);
         }
     }
 
-    fn have_tags(&mut self, tags: &Vec<String>) -> bool {
+    fn have_only_tags(&mut self, tags: &Vec<String>) -> bool {
         for tag in tags {
-            if self.tags.contains(tag) {
+            if self.only_tags.contains(tag) {
                 return true;
             }
         }
@@ -1525,14 +1526,14 @@ impl GTD {
             return true;
         }
 
-        if self.filter_by_tags {
+        if self.filter_by_only_tags {
             match task.tags {
                 None => {
                     // TODO: need flag to control this
                     return true;
                 },
                 Some(ref tags) => {
-                    if !self.have_tags(tags) {
+                    if !self.have_only_tags(tags) {
                         return true;
                     }
                 }
