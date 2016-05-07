@@ -316,6 +316,10 @@ fn main() {
         .subcommand(
             SubCommand::with_name("stats")
                 .about("Display statistics")
+        )
+        .subcommand(
+            SubCommand::with_name("current")
+                .about("Display current task")
         ).get_matches();
 
     let path_to_file: String = cmd_matches.value_of("path to gtdtxt file")
@@ -489,12 +493,29 @@ fn main() {
     if cmd_matches.is_present("validate") {
         println!("{:>20} {}", "Tasks found".purple(), format!("{}", journal.tasks.len()).bold().purple());
 
-        println!("File validated.");
+        println!("File(s) validated.");
 
         return;
     }
 
-    if let Some(matches) = cmd_matches.subcommand_matches("stats") {
+    if let Some(matches) = cmd_matches.subcommand_matches("current") {
+
+        match journal.current_task {
+            None => {
+
+                println!("No current task found.");
+
+            },
+            Some(task_id) => {
+
+                let task: &Task = journal.tasks.get(&task_id).unwrap();
+                print_task(&journal, task);
+            }
+        };
+
+        return;
+
+    } else if let Some(matches) = cmd_matches.subcommand_matches("stats") {
 
         println!("{}", "Statistics by file".bold().purple().underline());
         println!("");
@@ -894,6 +915,12 @@ fn print_vector_of_tasks(journal: &GTD, inbox: &Vec<u64>) -> u64 {
 
 fn print_task(journal: &GTD, task: &Task) {
 
+    if task.current {
+        println!("{:>11} ",
+            "CURRENT".bold().purple().italic()
+        );
+    }
+
     if task.flag && !journal.show_only_flagged {
             println!("{:>11} ",
                 "Flagged".bold().yellow()
@@ -1186,6 +1213,7 @@ struct Task {
     task_block_range_end: u64,
 
     /* props */
+    current: bool,
     title: Option<String>,
     note: Option<String>,
     created_at: Option<NaiveDateTime>,
@@ -1212,6 +1240,7 @@ impl Task {
             task_block_range_end: task_block_range_start,
 
             /* props */
+            current: false,
             title: None,
             note: None,
             created_at: None,
@@ -1325,6 +1354,8 @@ struct GTD {
 
     /* data */
 
+    current_task: Option<u64>,
+
     base_root: String,
 
     // track files opened
@@ -1414,6 +1445,8 @@ impl GTD {
             include_contexts: HashSet::new(),
 
             /* data */
+
+            current_task: None,
 
             base_root: base_root,
             opened_files: HashSet::new(),
@@ -1538,13 +1571,40 @@ impl GTD {
             process::exit(1);
         }
 
+        let new_id: u64 = self.next_task_id();
+
+        if task.current {
+
+            match self.current_task {
+                Some(first_task_id) => {
+
+                    println!("Found at least two current tasks.");
+                    println!("Only one task can be marked as current.");
+                    println!("");
+
+                    println!("First task found to be current:");
+                    let first_task: &Task = self.tasks.get(&first_task_id).unwrap();
+                    print_task(self, first_task);
+
+                    println!("");
+
+                    println!("Second task found to be current:");
+                    print_task(self, &task);
+
+                    process::exit(1);
+                },
+                None => {
+                    self.current_task = Some(new_id);
+                }
+            };
+        }
+
         // if let Some(ref title) = task.title {
         //     print_task(self, &task);
         //     println!("------");
         //     // println!("task.title: {}", title);
         // }
 
-        let new_id: u64 = self.next_task_id();
 
         match task.done_at {
             None => {},
@@ -2268,6 +2328,9 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                         };
 
                         match task_block_line {
+                            TaskBlock::Current => {
+                                current_task.current = true;
+                            },
                             TaskBlock::Title(title) => {
                                 current_task.title = Some(title);
                             },
@@ -2558,6 +2621,7 @@ enum Defer {
 // tokens from parser
 #[derive(Debug)]
 enum TaskBlock {
+    Current,
     Title(String),
     Created(NaiveDateTime),
     Done(NaiveDateTime),
@@ -2581,7 +2645,9 @@ fn task_block(i: Input<u8>) -> U8Result<LineToken> {
 
     parse!{i;
 
-        let line: TaskBlock = task_title() <|>
+        let line: TaskBlock =
+            task_current() <|>
+            task_title() <|>
             task_priority() <|>
             task_project() <|>
             task_flag() <|>
@@ -2599,6 +2665,19 @@ fn task_block(i: Input<u8>) -> U8Result<LineToken> {
 
         ret LineToken::Task(line)
     }
+}
+
+fn task_current(input: Input<u8>) -> U8Result<TaskBlock> {
+
+    parse!{input;
+
+        string_ignore_case("current".as_bytes());
+
+        let line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+
+        ret TaskBlock::Current
+    }
+
 }
 
 fn task_title(input: Input<u8>) -> U8Result<TaskBlock> {
