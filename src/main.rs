@@ -1100,11 +1100,18 @@ fn print_task(journal: &GTD, task: &Task) {
         }
     };
 
-    println!("{:>11} Lines {} to {}",
-        "Located:".bold().blue(),
-        task.task_block_range_start,
-        task.task_block_range_end
-    );
+    if task.task_block_range_start != task.task_block_range_end {
+        println!("{:>11} Lines {} to {}",
+            "Located:".bold().blue(),
+            task.task_block_range_start,
+            task.task_block_range_end
+        );
+    } else {
+        println!("{:>11} Line {}",
+            "Located:".bold().blue(),
+            task.task_block_range_start
+        );
+    }
 
     match task.tags {
         None => {},
