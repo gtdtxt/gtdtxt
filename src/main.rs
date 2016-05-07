@@ -1572,7 +1572,7 @@ impl GTD {
         return path_satisfies_tree(&(self.project_whitelist), path);
     }
 
-    fn add_task(&mut self, task: Task) {
+    fn add_task(&mut self, task: Task, directive_switch: &DirectiveSwitches) {
 
         // TODO: is this the best placement for this?
         let mut task = task;
@@ -1580,6 +1580,11 @@ impl GTD {
         let task = task;
 
         // validation
+
+        if !directive_switch.pass_validation(&task, self) {
+            // TODO: pass_validation prints errors and therefore produces side-effects; refactor
+            return;
+        }
 
         if task.title.is_none() {
 
@@ -2298,7 +2303,7 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
     let mut input = Source::new(file);
 
     // directive switches
-    let mut file_shall_not_contain_completed_tasks: bool = false;
+    let mut directive_switch = DirectiveSwitches::new();
 
     // initial state
     let mut previous_state: ParseState = ParseState::Start;
@@ -2438,7 +2443,7 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
 
                         match previous_state {
                             ParseState::Task(task) => {
-                                journal.add_task(task);
+                                journal.add_task(task, &directive_switch);
                             },
                             _ => {}
                         };
@@ -2450,7 +2455,10 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                                 parse_file(Some(tracked_path.clone()), path_to_file, journal);
                             },
                             Directive::ShouldNotContainCompletedTasks(result) => {
-                                file_shall_not_contain_completed_tasks = result;
+                                directive_switch.require_no_completed_tasks = Some(result);
+                            }
+                            Directive::RequiredProjectPrefix(result) => {
+                                directive_switch.required_project_prefix = Some(result);
                             }
                         };
 
@@ -2462,7 +2470,7 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
 
                         match previous_state {
                             ParseState::Task(task) => {
-                                journal.add_task(task);
+                                journal.add_task(task, &directive_switch);
                             },
                             _ => {}
                         };
@@ -2477,7 +2485,7 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
 
                         match previous_state {
                             ParseState::Task(task) => {
-                                journal.add_task(task);
+                                journal.add_task(task, &directive_switch);
                             },
                             _ => {}
                         };
@@ -2523,7 +2531,7 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
 
     match previous_state {
         ParseState::Task(task) => {
-            journal.add_task(task);
+            journal.add_task(task, &directive_switch);
         },
         _ => {}
     };
@@ -2532,21 +2540,28 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
         None => unsafe { debug_unreachable!() },
         Some(file_stats) => {
 
-            let ref mut tasks = file_stats.completed_tasks;
+            match directive_switch.require_no_completed_tasks {
+                None => {},
+                Some(require_no_completed_tasks) => {
 
-            if tasks.len() > 0 && file_shall_not_contain_completed_tasks {
-                println!("Found {} completed tasks that are not supposed to be in file: {}",
-                    tasks.len(),
-                    tracked_path);
+                    let ref mut tasks = file_stats.completed_tasks;
 
-                let task: &Task = journal.tasks.get(tasks.first().unwrap()).unwrap();
+                    if tasks.len() > 0 && require_no_completed_tasks {
+                        println!("Found {} completed tasks that are not supposed to be in file: {}",
+                            tasks.len(),
+                            tracked_path);
 
-                println!("Found a completed task at lines: {} to {}",
-                    task.task_block_range_start,
-                    task.task_block_range_end
-                );
-                process::exit(1);
-            }
+                        let task: &Task = journal.tasks.get(tasks.first().unwrap()).unwrap();
+
+                        println!("Found a completed task at lines: {} to {}",
+                            task.task_block_range_start,
+                            task.task_block_range_end
+                        );
+                        process::exit(1);
+                    }
+                }
+            };
+
         }
     }
 
@@ -3122,10 +3137,73 @@ fn task_id(input: Input<u8>) -> U8Result<TaskBlock> {
 
 /* directives */
 
+struct DirectiveSwitches {
+    require_no_completed_tasks: Option<bool>,
+    required_project_prefix: Option<Vec<String>>
+}
+
+impl DirectiveSwitches {
+    fn new() -> DirectiveSwitches {
+        DirectiveSwitches {
+            require_no_completed_tasks: None,
+            required_project_prefix: None
+        }
+    }
+
+    // TODO: this function produces side-effects; refactor
+    fn pass_validation(&self, task: &Task, journal: &GTD) -> bool {
+
+        match self.required_project_prefix {
+            None => {},
+            Some(ref required_project_prefix) => {
+
+                let has_required_project_prefix: bool = match task.project {
+                    None => false,
+                    Some(ref project_path) => {
+
+                        // ensure task.project has project_path as prefix
+
+                        if project_path.len() < required_project_prefix.len() {
+                            false
+                        } else {
+
+                            let mut matches = true;
+                            let mut idx = required_project_prefix.len();
+
+                            while idx > 0 {
+                                idx = idx - 1;
+
+                                if required_project_prefix[idx] != project_path[idx] {
+                                    matches = false;
+                                    break;
+                                }
+                            }
+
+                            matches
+                        }
+                    }
+                };
+
+                if !has_required_project_prefix {
+
+                    println!("The following task's project path does not begin with required project path prefix: {}", required_project_prefix.join(", "));
+
+                    _print_task(journal, &task, false);
+                    process::exit(1);
+                }
+
+            }
+        };
+
+        return true;
+    }
+}
+
 #[derive(Debug)]
 enum Directive {
     Include(String),
-    ShouldNotContainCompletedTasks(bool)
+    ShouldNotContainCompletedTasks(bool),
+    RequiredProjectPrefix(Vec<String>)
 }
 
 fn directives(input: Input<u8>) -> U8Result<LineToken> {
@@ -3133,7 +3211,8 @@ fn directives(input: Input<u8>) -> U8Result<LineToken> {
     parse!{input;
 
         let line: Directive = directive_include() <|>
-            directive_not_contain_done_tasks();
+            directive_not_contain_done_tasks() <|>
+            directive_required_project_prefix();
 
         ret {
             LineToken::Directive(line)
@@ -3163,7 +3242,10 @@ fn directive_not_contain_done_tasks(input: Input<u8>) -> U8Result<Directive> {
 
     parse!{input;
 
-        string_ignore_case("file_no_done_tasks".as_bytes());
+        string_ignore_case("file_no_done_tasks".as_bytes()) <|>
+        string_ignore_case("require no done tasks".as_bytes()) <|>
+        string_ignore_case("require no completed tasks".as_bytes()) <|>
+        string_ignore_case("require no finished tasks".as_bytes());
         token(b':');
 
         skip_many(|i| space_or_tab(i));
@@ -3173,6 +3255,25 @@ fn directive_not_contain_done_tasks(input: Input<u8>) -> U8Result<Directive> {
         let nothing: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
 
         ret Directive::ShouldNotContainCompletedTasks(input)
+    }
+}
+
+fn directive_required_project_prefix(input: Input<u8>) -> U8Result<Directive> {
+
+    parse!{input;
+
+        string_ignore_case("required project prefix".as_bytes()) <|>
+        string_ignore_case("require project prefix".as_bytes()) <|>
+        string_ignore_case("require_project_prefix".as_bytes()) <|>
+        string_ignore_case("required_project_prefix".as_bytes());
+        token(b':');
+
+        look_ahead(|i| non_empty_line(i));
+
+        let list = string_list(b'/');
+
+
+        ret Directive::RequiredProjectPrefix(list)
     }
 }
 
