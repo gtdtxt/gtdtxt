@@ -3484,12 +3484,31 @@ fn multiple_time_range(i: Input<u8>) -> U8Result<u64> {
 
     parse!{i;
 
-        let time: Vec<u64> = many1(|i| parse!{
-            i;
-            skip_many(|i| space_or_tab(i));
-            let range = time_range();
-            ret range
-        });
+        let time: Vec<u64> = many1(
+            |i| or(i,
+                |i| parse!{i;
+                    skip_many(|i| space_or_tab(i));
+                    let range1: u64 = time_range();
+
+                    space_or_tab();
+                    skip_many(|i| space_or_tab(i));
+                    string_ignore_case("and".as_bytes());
+                    space_or_tab();
+                    skip_many(|i| space_or_tab(i));
+
+                    let range2: u64 = time_range();
+
+                    ret {
+                        range1 + range2
+                    }
+                },
+                |i| parse!{i;
+                    skip_many(|i| space_or_tab(i));
+                    let range = time_range();
+                    ret range
+                }
+            )
+        );
 
         ret {
             let time = time.iter().fold(0, |mut sum, &val| {sum += val; sum});
