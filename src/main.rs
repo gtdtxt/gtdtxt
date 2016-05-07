@@ -1814,7 +1814,7 @@ impl GTD {
                     // hide task
                 } else if self.is_overdue(&task) {
 
-                    if self.show_overdue || task.due_at.is_some() || shall_show {
+                    if self.show_overdue || shall_show {
                         self.add_to_overdue(&task, new_id);
                     }
 
@@ -1843,7 +1843,7 @@ impl GTD {
                             // hide task
                         } else if self.is_overdue(&task) {
 
-                            if self.show_overdue || task.due_at.is_some() || shall_show {
+                            if self.show_overdue || shall_show {
                                 self.add_to_overdue(&task, new_id);
                             }
 
@@ -1867,7 +1867,7 @@ impl GTD {
                             // hide task
                         } else if self.is_overdue(&task) {
 
-                            if self.show_overdue || task.due_at.is_some() || shall_show {
+                            if self.show_overdue || shall_show {
                                 self.add_to_overdue(&task, new_id);
                             }
 
