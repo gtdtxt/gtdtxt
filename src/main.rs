@@ -782,7 +782,7 @@ fn main() {
 
             if header_display {
                 header_display = false;
-                println!("{} {}",
+                println!("{}{}",
                     "Done".white().bold().underline(),
                     format!(" ({})", count_tasks(&journal.done)).white().bold().underline());
                 println!("");
