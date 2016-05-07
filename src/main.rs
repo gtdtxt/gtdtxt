@@ -687,7 +687,7 @@ fn main() {
                 header_display = false;
                 println!("{}{}",
                     "Overdue".white().bold().underline(),
-                    format!(" ({})", count_tasks(&journal.inbox)).white().bold().underline());
+                    format!(" ({})", count_tasks(&journal.overdue)).white().bold().underline());
                 println!("");
             }
 
@@ -749,7 +749,7 @@ fn main() {
                 header_display = false;
                 println!("{}{}",
                     "Deferred".white().bold().underline(),
-                    format!(" ({})", count_tasks(&journal.inbox)).white().bold().underline());
+                    format!(" ({})", count_tasks(&journal.deferred)).white().bold().underline());
                 println!("");
             }
 
@@ -784,7 +784,7 @@ fn main() {
                 header_display = false;
                 println!("{} {}",
                     "Done".white().bold().underline(),
-                    format!(" ({})", count_tasks(&journal.inbox)).white().bold().underline());
+                    format!(" ({})", count_tasks(&journal.done)).white().bold().underline());
                 println!("");
             }
 
