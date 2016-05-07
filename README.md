@@ -1,7 +1,7 @@
 gtdtxt
 ======
 
-> CLI app to parse a human-readable text file for managing (Getting Things Done) workflow.
+> Getting Things Done (GTD) command-line application that parses human-readable to-do list text files.
 
 ![](screenshot.png)
 
@@ -20,9 +20,9 @@ For a pragmatic introduction to GTD, see:
 ## Usage
 
 ```
-gtdtxt v0.8.0 (semver.org)
+gtdtxt v0.9.0 (semver.org)
 Alberto Leal <mailforalberto@gmail.com> (github.com/dashed)
-CLI app to parse a human-readable text file for managing (Getting Things Done) workflow
+Getting Things Done (GTD) command-line application that parses human-readable to-do list text files.
 
 USAGE:
     gtdtxt [FLAGS] [OPTIONS] <path to gtdtxt file> [SUBCOMMAND]
@@ -81,9 +81,10 @@ ARGS:
     <path to gtdtxt file>    Path to gtdtxt file.
 
 SUBCOMMANDS:
-    help     Prints this message or the help message of the given subcommand(s)
-    stats    Display statistics
-    
+    current    Display current task
+    help       Prints this message or the help message of the given subcommand(s)
+    stats      Display statistics
+
 ```
 
 ### Tutorial
