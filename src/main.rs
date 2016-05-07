@@ -12,10 +12,9 @@ extern crate chrono;
 extern crate colored;
 extern crate clap;
 
-// TODO: clean up imports
 
 use std::path::{Path, PathBuf};
-use std::fs::{File, Metadata};
+use std::fs::{File};
 use std::collections::{HashMap, HashSet, BTreeMap};
 use std::ascii::{AsciiExt};
 use std::env;
@@ -28,24 +27,21 @@ use colored::*;
 use clap::{Arg, App, SubCommand};
 
 // use chrono::*;
-use chrono::offset::utc::UTC;
-use chrono::offset::{TimeZone, Offset};
+use chrono::offset::{TimeZone};
 use chrono::offset::local::Local;
-use chrono::datetime::DateTime;
 use chrono::naive::datetime::NaiveDateTime;
 use chrono::naive::date::NaiveDate;
 use chrono::naive::time::NaiveTime;
 use chrono::duration::Duration;
 
-// TODO: reorg this
-use chomp::{SimpleResult, Error, ParseError, ParseResult};
-use chomp::primitives::{InputBuffer, IntoInner, State};
+use chomp::{SimpleResult, Error, ParseResult};
+use chomp::primitives::{InputBuffer, IntoInner};
 use chomp::{Input, U8Result, parse_only};
 use chomp::buffer::{Source, Stream, StreamError};
 
-use chomp::{take_while1, token};
+use chomp::{token};
 use chomp::parsers::{string, eof, any, satisfy};
-use chomp::combinators::{or, many_till, many, many1, skip_many, skip_many1, look_ahead, option, sep_by};
+use chomp::combinators::{or, many_till, many, many1, skip_many, skip_many1, look_ahead};
 use chomp::ascii::{is_whitespace, decimal, digit};
 // use chomp::*;
 
@@ -336,13 +332,12 @@ fn main() {
         let due_within = due_within.trim();
 
         match parse_only(|i| multiple_time_range(i), due_within.as_bytes()) {
-            Ok(mut result) => {
+            Ok(result) => {
                 journal.due_within = Duration::seconds(result as i64);
             },
-            Err(e) => {
+            Err(_) => {
                 println!("Unable to parse value to option `--due-within`: {}", due_within);
                 process::exit(1);
-                // TODO: refactor
                 // panic!("{:?}", e);
             }
         }
@@ -356,9 +351,10 @@ fn main() {
                 Ok(mut result) => {
                     journal.add_project_only_filter(&mut result);
                 },
-                Err(e) => {
-                    // TODO: refactor
-                    panic!("{:?}", e);
+                Err(_) => {
+                    println!("Unable to parse project path `--only-with-project`: {}", project_path);
+                    process::exit(1);
+                    // panic!("{:?}", e);
                 }
             }
         }
@@ -371,9 +367,10 @@ fn main() {
                 Ok(mut result) => {
                     journal.add_project_whitelist(&mut result);
                 },
-                Err(e) => {
-                    // TODO: refactor
-                    panic!("{:?}", e);
+                Err(_) => {
+                    println!("Unable to parse project path `--show-with-project`: {}", project_path);
+                    process::exit(1);
+                    // panic!("{:?}", e);
                 }
             }
         }
@@ -385,7 +382,7 @@ fn main() {
         for tag in tags {
 
             match parse_only(|i| string_list(i, b','), tag.as_bytes()) {
-                Ok(mut result) => {
+                Ok(result) => {
 
                     if result.len() > 0 {
                         journal.filter_by_only_tags = true;
@@ -393,9 +390,10 @@ fn main() {
 
                     journal.add_tag_only_filters(result);
                 },
-                Err(e) => {
-                    // TODO: refactor
-                    panic!("{:?}", e);
+                Err(_) => {
+                    println!("Unable to parse tags `--only-with-tag`: {}", tag);
+                    process::exit(1);
+                    // panic!("{:?}", e);
                 }
             }
         }
@@ -406,7 +404,7 @@ fn main() {
         for tag in tags {
 
             match parse_only(|i| string_list(i, b','), tag.as_bytes()) {
-                Ok(mut result) => {
+                Ok(result) => {
 
                     if result.len() > 0 {
                         journal.filter_by_include_tags = true;
@@ -414,9 +412,10 @@ fn main() {
 
                     journal.add_tag_include_filters(result);
                 },
-                Err(e) => {
-                    // TODO: refactor
-                    panic!("{:?}", e);
+                Err(_) => {
+                    println!("Unable to parse tags `--show-with-tag`: {}", tag);
+                    process::exit(1);
+                    // panic!("{:?}", e);
                 }
             }
         }
@@ -428,7 +427,7 @@ fn main() {
         for context in contexts {
 
             match parse_only(|i| string_list(i, b','), context.as_bytes()) {
-                Ok(mut result) => {
+                Ok(result) => {
 
                     if result.len() > 0 {
                         journal.filter_by_only_contexts = true;
@@ -436,9 +435,10 @@ fn main() {
 
                     journal.add_context_only_filters(result);
                 },
-                Err(e) => {
-                    // TODO: refactor
-                    panic!("{:?}", e);
+                Err(_) => {
+                    println!("Unable to parse contexts `--only-with-context`: {}", context);
+                    process::exit(1);
+                    // panic!("{:?}", e);
                 }
             }
         }
@@ -449,7 +449,7 @@ fn main() {
         for context in contexts {
 
             match parse_only(|i| string_list(i, b','), context.as_bytes()) {
-                Ok(mut result) => {
+                Ok(result) => {
 
                     if result.len() > 0 {
                         journal.filter_by_include_contexts = true;
@@ -457,9 +457,10 @@ fn main() {
 
                     journal.add_context_include_filters(result);
                 },
-                Err(e) => {
-                    // TODO: refactor
-                    panic!("{:?}", e);
+                Err(_) => {
+                    println!("Unable to parse contexts `--show-with-context`: {}", context);
+                    process::exit(1);
+                    // panic!("{:?}", e);
                 }
             }
         }
@@ -2094,7 +2095,6 @@ impl GTD {
             }
         }
 
-        false
     }
 
     fn add_to_overdue(&mut self, task: &Task, task_id: u64) {
@@ -2211,9 +2211,10 @@ impl GTD {
         -priority
     }
 
-    fn decode_priority(priority: i64) -> i64 {
-        -priority
-    }
+    // NOTE: unused
+    // fn decode_priority(priority: i64) -> i64 {
+    //     -priority
+    // }
 }
 
 /* gtdtxt file parser */
@@ -2294,7 +2295,7 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
 
         let mut n = Numbering::new(LineNumber::new(), line_token_parser);
         // If we could implement FnMut for Numbering then we would be good, but we need to wrap now:
-        let mut m = |i| n.parse(i);
+        let m = |i| n.parse(i);
 
         match input.parse(m) {
             Ok((lines_parsed, line)) => {
