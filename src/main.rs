@@ -915,6 +915,10 @@ fn print_vector_of_tasks(journal: &GTD, inbox: &Vec<u64>) -> u64 {
 }
 
 fn print_task(journal: &GTD, task: &Task) {
+    _print_task(journal, task, true);
+}
+
+fn _print_task(journal: &GTD, task: &Task, require_title: bool) {
 
     if task.current {
         println!("{:>11} ",
@@ -930,10 +934,16 @@ fn print_task(journal: &GTD, task: &Task) {
 
     match task.title {
         None => {
-            println!("Missing task title (i.e. `task: <title>`) in task block found {}",
-                task.debug_range_string()
-            );
-            process::exit(1);
+
+            if require_title {
+                println!("Missing task title (i.e. `task: <title>`) in task block found {}",
+                    task.debug_range_string()
+                );
+                println!("Captured:");
+                _print_task(journal, task, false);
+                process::exit(1);
+            }
+
         },
 
         Some(ref title) => {
@@ -1576,6 +1586,8 @@ impl GTD {
             println!("Missing task title (i.e. `task: <title>`) in task block found {}",
                 task.debug_range_string()
             );
+            println!("Captured:");
+            _print_task(self, &task, false);
             process::exit(1);
         }
 
