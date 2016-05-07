@@ -52,7 +52,7 @@ fn main() {
 
     let cmd_matches = App::new("gtdtxt")
         .version(version) // semver semantics
-        .about("CLI app to parse a human-readable text file for managing (Getting Things Done) workflow")
+        .about("Getting Things Done (GTD) command-line application that parses human-readable to-do list text files.")
         .author("Alberto Leal <mailforalberto@gmail.com> (github.com/dashed)")
         .arg(
             Arg::with_name("hide-headers")
