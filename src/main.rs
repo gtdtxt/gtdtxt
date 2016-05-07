@@ -663,19 +663,19 @@ fn main() {
     let mut print_line: bool = false;
     let mut num_displayed = 0;
     let mut num_overdue = 0;
+    let mut num_inbox = 0;
     let mut num_deferred = 0;
     let mut num_done = 0;
 
 
     // display tasks that are overdue
     let mut header_display: bool = show_headers;
+    num_overdue = count_tasks(&journal.overdue);
     for (_, bucket) in journal.overdue.iter() {
 
         if bucket.len() <= 0 {
             continue;
         }
-
-        num_overdue += bucket.len();
 
         if !journal.hide_overdue {
 
@@ -687,7 +687,7 @@ fn main() {
                 header_display = false;
                 println!("{}{}",
                     "Overdue".white().bold().underline(),
-                    format!(" ({})", count_tasks(&journal.overdue)).white().bold().underline());
+                    format!(" ({})", num_overdue).white().bold().underline());
                 println!("");
             }
 
@@ -702,7 +702,7 @@ fn main() {
     // display inbox ordered by priority.
     // incubated tasks are not included
     let mut header_display: bool = show_headers;
-
+    num_inbox = count_tasks(&journal.inbox);
     for (_, inbox) in journal.inbox.iter() {
 
         if inbox.len() <= 0 {
@@ -717,7 +717,7 @@ fn main() {
             header_display = false;
             println!("{}{}",
                 "Inbox".white().bold().underline(),
-                format!(" ({})", count_tasks(&journal.inbox)).white().bold().underline());
+                format!(" ({})", num_inbox).white().bold().underline());
             println!("");
         }
 
@@ -731,13 +731,12 @@ fn main() {
 
     // display deferred tasks ordered by priority
     let mut header_display: bool = show_headers;
+    num_deferred = count_tasks(&journal.deferred);
     for (_, deferred) in journal.deferred.iter() {
 
         if deferred.len() <= 0 {
             continue;
         }
-
-        num_deferred += deferred.len();
 
         if journal.show_deferred || journal.hide_tasks_by_default {
 
@@ -749,7 +748,7 @@ fn main() {
                 header_display = false;
                 println!("{}{}",
                     "Deferred".white().bold().underline(),
-                    format!(" ({})", count_tasks(&journal.deferred)).white().bold().underline());
+                    format!(" ({})", num_deferred).white().bold().underline());
                 println!("");
             }
 
@@ -766,13 +765,12 @@ fn main() {
 
     // display completed tasks
     let mut header_display: bool = show_headers;
+    num_done = count_tasks(&journal.done);
     for (_, done) in journal.done.iter() {
 
         if done.len() <= 0 {
             continue;
         }
-
-        num_done += done.len();
 
         if journal.show_done || journal.hide_tasks_by_default {
 
@@ -784,7 +782,7 @@ fn main() {
                 header_display = false;
                 println!("{}{}",
                     "Done".white().bold().underline(),
-                    format!(" ({})", count_tasks(&journal.done)).white().bold().underline());
+                    format!(" ({})", num_done).white().bold().underline());
                 println!("");
             }
 
@@ -853,6 +851,11 @@ fn main() {
     println!("{:>20} {}",
         "Tasks overdue".purple(),
         format!("{}", num_overdue).bold().purple()
+    );
+
+    println!("{:>20} {}",
+        "Tasks inbox".purple(),
+        format!("{}", num_inbox).bold().purple()
     );
 
     println!("{:>20} {}",
