@@ -105,6 +105,13 @@ project: personal / food
 task: buy milk
 project: ////personal///////food/////
 
+# It may be useful to enforce tasks within a file to have project paths that begin
+# with a prefix.
+required project prefix: inbox / chores
+require project prefix: inbox / chores
+require_project_prefix: inbox / chores
+required_project_prefix: inbox / chores
+
 # created datetime
 
 task: buy milk
@@ -144,8 +151,13 @@ status: finished
 # that those files shouldn't contain completed tasks. Therefore forcing you
 # to reorganize them elsewhere e.g. putting them into completed.gtd
 #
-# ensure no completed tasks in this file
+# Include this directive (or aliases) to ensure that the current file does not
+# contain completed tasks.
 file_no_done_tasks: true
+require no done tasks: true
+require no completed tasks: true
+require no finished tasks: true
+
 
 # due dates
 
