@@ -7,10 +7,10 @@ class Gtdtxt < Formula
 
   if Hardware.is_64_bit?
     url "https://github.com/gtdtxt/gtdtxt/releases/download/v#{_ver}/gtdtxt-v#{_ver}-x86_64-apple-darwin.tar.gz"
-    sha256 'cc3bff019ff4787d3544fe95f351fbb4c5df15d07524e951efcbb81f7a4ec751'
+    sha256 '9d2935ced226289de97ed70165ae6b131ba420cb45be0c2de9bf4dc06b27f6b6'
   else
     url "https://github.com/gtdtxt/gtdtxt/releases/download/v#{_ver}/gtdtxt-v#{_ver}-i686-apple-darwin.tar.gz"
-    sha256 '9bf453e581b7bb6d822a300b56c57fa612da334b5648b922223750fca343bec7'
+    sha256 '8259320dbb3fa1bbd654e0dbeaa804d807233fb03713993fe438e7053156929a'
   end
 
   def install
