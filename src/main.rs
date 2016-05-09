@@ -3189,7 +3189,8 @@ impl DirectiveSwitches {
 
                 if !has_required_project_prefix {
 
-                    println!("The following task's project path does not begin with required project path prefix: {}", required_project_prefix.join(", "));
+                    println!("The following task's project path does not begin with required project path prefix: {}",
+                        required_project_prefix.join(" / "));
 
                     _print_task(journal, &task, false);
                     process::exit(1);
