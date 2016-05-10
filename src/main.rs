@@ -2702,7 +2702,8 @@ fn task_block(i: Input<u8>) -> U8Result<LineToken> {
             task_tags() <|>
             task_contexts() <|>
             task_time() <|>
-            task_id() <|>
+            // TODO: complete
+            // task_id()
             task_note();
 
         ret LineToken::Task(line)
@@ -3401,59 +3402,19 @@ fn comments_block(i: Input<u8>) -> U8Result<()> {
 fn string_list(input: Input<u8>, delim: u8) -> U8Result<Vec<String>> {
     parse!{input;
 
-        skip_many(|i| space_or_tab(i));
-
-        // TODO: custom delimeter option
-        let raw_list = delim_sep_list(delim);
-
-        let last_item: Vec<u8> = many_till(|i| any(i), |i| terminating(i));
+        let line = non_empty_line();
 
         ret {
+            let line: Vec<u8> = line;
 
-            let mut new_list: Vec<String> = Vec::new();
+            let list: Vec<String> = String::from_utf8_lossy(line.as_slice())
+                .trim()
+                .split(delim as char).map(|c| c.trim().to_string()).collect();
 
-            for item in &raw_list {
-                let item: String = format!("{}", String::from_utf8_lossy(item.as_slice()).trim());
 
-                if item.len() > 0 {
-                    new_list.push(item);
-                }
-            }
-
-            let last_item: String = format!("{}", String::from_utf8_lossy(last_item.as_slice()).trim());
-            if last_item.len() > 0 {
-                new_list.push(last_item);
-            }
-
-            new_list
+            list
         }
     }
-}
-
-fn delim_sep_list(i: Input<u8>, delim: u8) -> U8Result<Vec<Vec<u8>>> {
-
-    parse!{i;
-        skip_many(|i| token(i, delim));
-
-        let list: Vec<Vec<u8>> = many(|i| delim_sep_item(i, delim));
-        ret list
-    }
-
-}
-
-fn delim_sep_item(i: Input<u8>, delim: u8) -> U8Result<Vec<u8>> {
-
-    parse!{i;
-
-        skip_many(|i| token(i, delim));
-
-        let item: Vec<u8> = many_till(|i| non_terminating(i), |i| token(i, delim));
-
-        skip_many(|i| token(i, delim));
-
-        ret item
-    }
-
 }
 
 /* misc parsers */
