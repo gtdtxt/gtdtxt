@@ -3409,7 +3409,9 @@ fn string_list(input: Input<u8>, delim: u8) -> U8Result<Vec<String>> {
 
             let list: Vec<String> = String::from_utf8_lossy(line.as_slice())
                 .trim()
-                .split(delim as char).map(|c| c.trim().to_string()).collect();
+                .split(delim as char).map(|c| c.trim().to_string())
+                .filter(|x| x.len() > 0)
+                .collect();
 
 
             list
