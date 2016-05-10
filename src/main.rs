@@ -2539,7 +2539,7 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
         _ => {}
     };
 
-    match journal.file_stats.get_mut(&tracked_path) {
+    match journal.file_stats.get(&tracked_path) {
         None => unsafe { debug_unreachable!() },
         Some(file_stats) => {
 
@@ -2547,7 +2547,7 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                 None => {},
                 Some(require_no_completed_tasks) => {
 
-                    let ref mut tasks = file_stats.completed_tasks;
+                    let ref tasks = file_stats.completed_tasks;
 
                     if tasks.len() > 0 && require_no_completed_tasks {
                         println!("Found {} completed tasks that are not supposed to be in file: {}",
@@ -2560,6 +2560,10 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                             task.task_block_range_start,
                             task.task_block_range_end
                         );
+                        println!("");
+
+                        _print_task(journal, task, false);
+
                         process::exit(1);
                     }
                 }
