@@ -20,7 +20,7 @@ For a pragmatic introduction to GTD, see:
 ## Usage
 
 ```
-gtdtxt v0.9.0 (semver.org)
+gtdtxt v0.9.1 (semver.org)
 Alberto Leal <mailforalberto@gmail.com> (github.com/dashed)
 Getting Things Done (GTD) command-line application that parses human-readable to-do list text files.
 
