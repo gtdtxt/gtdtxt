@@ -528,7 +528,10 @@ fn main() {
 
         let mut print_line: bool = false;
 
-        for (path, file_stats) in journal.file_stats {
+        // for (path, file_stats) in journal.file_stats {
+        for path in &journal.file_stats_stack {
+
+            let file_stats = journal.file_stats.get(path).unwrap();
 
             if print_line {
                 println!("");
@@ -605,7 +608,7 @@ fn main() {
 
             if file_stats.have_projects() {
                 let mut first = true;
-                for path in file_stats.project_paths {
+                for path in &file_stats.project_paths {
 
                     if first {
                         first = false;
@@ -1382,6 +1385,8 @@ struct GTD {
     // track files opened
     opened_files: HashSet<String>,
 
+    // This tracks the order of the inserted path to file_stats. Used for output.
+    file_stats_stack: Vec<String>,
     // path to file -> FileStats
     file_stats: HashMap<String, FileStats>,
 
@@ -1472,6 +1477,7 @@ impl GTD {
             base_root: base_root,
             opened_files: HashSet::new(),
 
+            file_stats_stack: Vec::new(),
             file_stats: HashMap::new(),
 
             pulse: HashMap::new(),
@@ -2298,6 +2304,7 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
     }
 
     journal.file_stats.insert(tracked_path.clone(), FileStats::new());
+    journal.file_stats_stack.push(tracked_path.clone());
 
     let mut num_of_lines_parsed = 0;
 
