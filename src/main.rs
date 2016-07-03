@@ -27,7 +27,6 @@ use colored::*;
 use clap::{Arg, App, SubCommand};
 
 // use chrono::*;
-use chrono::offset::{TimeZone};
 use chrono::offset::local::Local;
 use chrono::naive::datetime::NaiveDateTime;
 use chrono::naive::date::NaiveDate;
@@ -35,7 +34,7 @@ use chrono::naive::time::NaiveTime;
 use chrono::duration::Duration;
 
 use chomp::{SimpleResult, Error, ParseResult};
-use chomp::primitives::{InputBuffer, IntoInner};
+use chomp::primitives::{InputBuffer};
 use chomp::{Input, U8Result, parse_only};
 use chomp::buffer::{Source, Stream, StreamError};
 
@@ -499,7 +498,7 @@ fn main() {
         return;
     }
 
-    if let Some(matches) = cmd_matches.subcommand_matches("current") {
+    if let Some(_matches) = cmd_matches.subcommand_matches("current") {
 
         match journal.current_task {
             None => {
@@ -516,7 +515,7 @@ fn main() {
 
         return;
 
-    } else if let Some(matches) = cmd_matches.subcommand_matches("stats") {
+    } else if let Some(_matches) = cmd_matches.subcommand_matches("stats") {
 
         println!("{}", "Statistics by file".bold().purple().underline());
         println!("");
@@ -665,10 +664,10 @@ fn main() {
 
     let mut print_line: bool = false;
     let mut num_displayed = 0;
-    let mut num_overdue = 0;
-    let mut num_inbox = 0;
-    let mut num_deferred = 0;
-    let mut num_done = 0;
+    let num_overdue;
+    let num_inbox;
+    let num_deferred;
+    let num_done;
 
 
     // display tasks that are overdue
@@ -2435,7 +2434,7 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                             TaskBlock::Time(time) => {
                                 current_task.time += time;
                             },
-                            TaskBlock::ID(id) => {
+                            TaskBlock::ID(_id) => {
                                 // println!("id: '{}'", id);
                                 // TODO: complete
                             },
@@ -2511,7 +2510,7 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
             Err(StreamError::EndOfInput) => {
                 break;
             },
-            Err(e) => {
+            Err(_err) => {
 
                 // println!("{:?}", e);
 
@@ -2643,7 +2642,7 @@ fn pre_block(i: Input<u8>) -> U8Result<LineToken> {
         consume comment blocks or whitespace till
         one line comments or terminating
          */
-        let line: Vec<()> = many_till(
+        let _line: Vec<()> = many_till(
             |i| or(i,
                 |i| whitespace(i),
                 |i| comments_block(i)
@@ -2723,7 +2722,7 @@ fn task_current(input: Input<u8>) -> U8Result<TaskBlock> {
 
         string_ignore_case("current".as_bytes());
 
-        let line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+        let _line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
 
         ret TaskBlock::Current
     }
@@ -2799,7 +2798,7 @@ fn task_note(input: Input<u8>) -> U8Result<TaskBlock> {
                     // allow empty lines in note
 
                     let nothing: Vec<()> = many(|i| parse!{i;
-                        let nothing: Vec<()> = many_till(|i| space_or_tab(i), |i| end_of_line(i));
+                        let _nothing: Vec<()> = many_till(|i| space_or_tab(i), |i| end_of_line(i));
                         ret ()
                     });
 
@@ -2858,7 +2857,7 @@ fn task_time(input: Input<u8>) -> U8Result<TaskBlock> {
         let time: u64 = multiple_time_range();
 
 
-        let nothing: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+        let _nothing: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
 
         ret TaskBlock::Time(time)
     }
@@ -2878,7 +2877,7 @@ fn task_priority(input: Input<u8>) -> U8Result<TaskBlock> {
 
         let priority: i64 = signed_decimal() <|> decimal();
 
-        let nothing: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+        let _nothing: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
 
         ret TaskBlock::Priority(priority)
     }
@@ -2912,7 +2911,7 @@ fn task_flag(input: Input<u8>) -> U8Result<TaskBlock> {
 
         let input = bool_option_parser();
 
-        let line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+        let _line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
 
         ret TaskBlock::Flag(input)
     }
@@ -2936,7 +2935,7 @@ fn task_created(input: Input<u8>) -> U8Result<TaskBlock> {
 
         let created_at = parse_datetime(false);
 
-        let line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+        let _line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
 
         ret TaskBlock::Created(created_at)
     }
@@ -2959,7 +2958,7 @@ fn task_done(input: Input<u8>) -> U8Result<TaskBlock> {
 
         let done_at = parse_datetime(false);
 
-        let line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+        let _line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
 
         ret TaskBlock::Done(done_at)
     }
@@ -2979,7 +2978,7 @@ fn task_chain(input: Input<u8>) -> U8Result<TaskBlock> {
 
         let chain_at = parse_datetime(false);
 
-        let line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+        let _line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
 
         ret TaskBlock::Chain(chain_at)
     }
@@ -3040,7 +3039,7 @@ fn task_status(input: Input<u8>) -> U8Result<TaskBlock> {
 
         let status = parse_status();
 
-        let line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+        let _line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
 
         ret TaskBlock::Status(status)
     }
@@ -3059,7 +3058,7 @@ fn task_due(input: Input<u8>) -> U8Result<TaskBlock> {
 
         let due_at = parse_datetime(true);
 
-        let line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+        let _line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
 
         ret TaskBlock::Due(due_at)
     }
@@ -3094,7 +3093,7 @@ fn task_defer(input: Input<u8>) -> U8Result<TaskBlock> {
             }
         );
 
-        let line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+        let _line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
 
         ret TaskBlock::Defer(defer)
     }
@@ -3268,7 +3267,7 @@ fn directive_not_contain_done_tasks(input: Input<u8>) -> U8Result<Directive> {
 
         let input = bool_option_parser();
 
-        let nothing: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+        let _nothing: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
 
         ret Directive::ShouldNotContainCompletedTasks(input)
     }
@@ -3372,7 +3371,7 @@ fn parse_task_separator<'a>(input: Input<'a, u8>, token: &[u8])
 
         match_four_tokens(token);
         skip_many(|i| string(i, token));
-        let line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+        let _line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
 
         ret ()
     }
@@ -3390,7 +3389,7 @@ fn comments_one_line(i: Input<u8>) -> U8Result<()> {
             )
         );
 
-        let line: Vec<u8> = many_till(|i| any(i), |i| terminating(i));
+        let _line: Vec<u8> = many_till(|i| any(i), |i| terminating(i));
         ret ()
     }
 }
@@ -3399,7 +3398,7 @@ fn comments_block(i: Input<u8>) -> U8Result<()> {
     parse!{i;
         string("/*".as_bytes());
 
-        let line: Vec<u8> = many_till(|i| any(i), |i| string(i, "*/".as_bytes()));
+        let _line: Vec<u8> = many_till(|i| any(i), |i| string(i, "*/".as_bytes()));
         ret ()
     }
 }
