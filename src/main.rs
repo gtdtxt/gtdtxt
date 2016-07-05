@@ -178,7 +178,7 @@ fn main() {
         )
         .arg(
             Arg::with_name("sort-overdue-by-priority")
-            .help("Sort overdue tasks by priority.")
+            .help("Sort overdue tasks by priority. By default overdue tasks are shown from oldest due to recently due.")
             .short("z")
             .long("sort-overdue-by-priority")
             .required(false)
@@ -2129,9 +2129,15 @@ impl GTD {
                 return;
             },
             Some(ref due_at) => {
+
+                // sort by oldest due to most recently due
+
                 let rel_time = due_at.timestamp() - Local::now().naive_local().timestamp();
 
                 let encoded_key = if self.sort_overdue_by_priority {
+
+                    // override to sort by priority
+
                     GTD::encode_priority(task.priority) as i64
                 } else {
                     // largest negative numbers appear first
