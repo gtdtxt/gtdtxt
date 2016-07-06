@@ -1,4 +1,5 @@
 #![recursion_limit="100"]
+// Above is used for chomp macros
 
 #[macro_use]
 extern crate version;
