@@ -22,7 +22,8 @@ version = "0.2"
 version = "1.2"
 
 [dependencies.clap]
-version = "2.3"
+version = "2.9"
+features = [ "suggestions", "color" ]
 
 [dependencies.version]
 version = "2"
