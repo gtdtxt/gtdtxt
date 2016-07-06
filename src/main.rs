@@ -25,7 +25,7 @@ use std::marker::PhantomData;
 
 use colored::*;
 
-use clap::{Arg, App, SubCommand};
+use clap::{Arg, App, SubCommand, AppSettings};
 
 // use chrono::*;
 use chrono::offset::local::Local;
@@ -51,6 +51,9 @@ fn main() {
     let version: &str = &format!("v{} (semver.org)", version!());
 
     let cmd_matches = App::new("gtdtxt")
+        .setting(AppSettings::ArgRequiredElseHelp)
+        .setting(AppSettings::GlobalVersion)
+        .setting(AppSettings::UnifiedHelpMessage)
         .version(version) // semver semantics
         .about("Getting Things Done (GTD) command-line application that parses human-readable to-do list text files.")
         .author("Alberto Leal <mailforalberto@gmail.com> (github.com/dashed)")
