@@ -128,7 +128,7 @@ created: jan 11, 2016 5:46am
 task: buy milk
 date: jan 11, 2016 5:46am
 
-## 24 hour clock
+## 24 hour clock convention
 
 task: buy milk
 created: jan 11, 2016 06:00
@@ -290,17 +290,34 @@ chain: May 2, 2016
 chain: May 4, 2016
 
 
+# You may attach multi-line notes
+
+task: task with note
+notes: Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+    Praesent faucibus lorem id nibh dictum pharetra.
+    Aenean sit amet pharetra velit. Sed ornare quam vel velit egestas fringilla.
+    Etiam feugiat quam justo.
+
+## Notes need not be on the same line as `notes:`,
+## and you may have blank lines in your notes
+
+task: task with note
+notes:
+
+    Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+
+    Praesent faucibus lorem id nibh dictum pharetra.
+
+    Aenean sit amet pharetra velit. Sed ornare quam vel velit egestas fringilla.
+
+    Etiam feugiat quam justo.
+
+
 
 #####
 # Incubating features
 #####
 
-# DEV: no parser support yet
-/*notes: Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-    Praesent faucibus lorem id nibh dictum pharetra.
-    Aenean sit amet pharetra velit. Sed ornare quam vel velit egestas fringilla.
-    Etiam feugiat quam justo.
-    */
 
 # multi-line task titles
 # addition lines must begin with a whitespace
