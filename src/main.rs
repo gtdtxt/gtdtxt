@@ -334,7 +334,7 @@ fn main() {
 
         let due_within = due_within.trim();
 
-        match parse_only(|i| multiple_time_range(i), due_within.as_bytes()) {
+        match parse_only(|i| parse_times_ranges(i), due_within.as_bytes()) {
             Ok(result) => {
                 journal.due_within = Duration::seconds(result as i64);
             },
@@ -350,7 +350,7 @@ fn main() {
     if let Some(project_paths) = cmd_matches.values_of("only-with-project") {
         for project_path in project_paths {
 
-            match parse_only(|i| string_list(i, b'/'), project_path.as_bytes()) {
+            match parse_only(|i| parse_string_lists(i, b'/'), project_path.as_bytes()) {
                 Ok(mut result) => {
                     journal.add_project_only_filter(&mut result);
                 },
@@ -366,7 +366,7 @@ fn main() {
     if let Some(project_paths) = cmd_matches.values_of("show-with-project") {
         for project_path in project_paths {
 
-            match parse_only(|i| string_list(i, b'/'), project_path.as_bytes()) {
+            match parse_only(|i| parse_string_lists(i, b'/'), project_path.as_bytes()) {
                 Ok(mut result) => {
                     journal.add_project_whitelist(&mut result);
                 },
@@ -384,7 +384,7 @@ fn main() {
 
         for tag in tags {
 
-            match parse_only(|i| string_list(i, b','), tag.as_bytes()) {
+            match parse_only(|i| parse_string_lists(i, b','), tag.as_bytes()) {
                 Ok(result) => {
 
                     if result.len() > 0 {
@@ -406,7 +406,7 @@ fn main() {
 
         for tag in tags {
 
-            match parse_only(|i| string_list(i, b','), tag.as_bytes()) {
+            match parse_only(|i| parse_string_lists(i, b','), tag.as_bytes()) {
                 Ok(result) => {
 
                     if result.len() > 0 {
@@ -429,7 +429,7 @@ fn main() {
 
         for context in contexts {
 
-            match parse_only(|i| string_list(i, b','), context.as_bytes()) {
+            match parse_only(|i| parse_string_lists(i, b','), context.as_bytes()) {
                 Ok(result) => {
 
                     if result.len() > 0 {
@@ -451,7 +451,7 @@ fn main() {
 
         for context in contexts {
 
-            match parse_only(|i| string_list(i, b','), context.as_bytes()) {
+            match parse_only(|i| parse_string_lists(i, b','), context.as_bytes()) {
                 Ok(result) => {
 
                     if result.len() > 0 {
@@ -3415,6 +3415,16 @@ fn comments_block(i: Input<u8>) -> U8Result<()> {
 
 /* delimited list parser */
 
+fn parse_string_lists(input: Input<u8>, delim: u8) -> U8Result<Vec<String>> {
+    parse!{input;
+        skip_many(|i| space_or_tab(i));
+        let result = string_list(b'/');
+        skip_many(|i| space_or_tab(i));
+        eof();
+        ret result
+    }
+}
+
 fn string_list(input: Input<u8>, delim: u8) -> U8Result<Vec<String>> {
     parse!{input;
 
@@ -3579,6 +3589,16 @@ fn end_of_line(i: Input<u8>) -> U8Result<&[u8]> {
 }
 
 /* time range parsers */
+
+fn parse_times_ranges(i: Input<u8>) -> U8Result<u64> {
+    parse!{i;
+        skip_many(|i| space_or_tab(i));
+        let result: u64 = multiple_time_range();
+        skip_many(|i| space_or_tab(i));
+        eof();
+        ret result
+    }
+}
 
 fn multiple_time_range(i: Input<u8>) -> U8Result<u64> {
 
