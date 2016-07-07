@@ -121,14 +121,6 @@ If you're on OSX, you may install using [Homebrew](http://brew.sh/):
 brew install https://raw.githubusercontent.com/gtdtxt/gtdtxt/master/gtdtxt.rb
 ```
 
-### cargo install
-
-DONT COMMIT
-
-```
-cargo install gtdtxt
-```
-
 ## Examples
 
 - [reference-todo.gtd](./reference-todo.gtd)
