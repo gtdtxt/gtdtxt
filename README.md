@@ -20,7 +20,7 @@ For a pragmatic introduction to GTD, see:
 ## Usage
 
 ```
-gtdtxt v0.10.0 (semver.org)
+gtdtxt v0.11.0 (semver.org)
 Alberto Leal <mailforalberto@gmail.com> (github.com/dashed)
 Getting Things Done (GTD) command-line application that parses human-readable to-do list text files.
 
@@ -69,14 +69,17 @@ OPTIONS:
         
     -y, --show-priority <show-priority>
         Filter tasks by priority.
-        Format: <operator><priority>
+        Format of filter: <operator><priority>
         <priority> is a signed integer.
-        There may be
-        whitespace between <operator> and <priority>.
+        There
+        may be whitespace between <operator> and <priority>.
         Operators: <=, <, >=, >, =, ==
+        You may combine
+        filters with: and, &, &&, or, |, ||
+        You may wrap filter expressions in parentheses.
         
-        Example: >= 42 (show tasks
-        greater or equal to 42)
+        Example: >= 42
+        (show tasks greater or equal to 42)
         
     -s, --show-with-context <show-with-context>
         Show tasks with given list of comma separated contexts.
