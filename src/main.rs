@@ -300,6 +300,7 @@ fn main() {
         .arg(
             Arg::with_name("show-priority")
             .next_line_help(true)
+            .use_delimiter(false)
             .help("Filter tasks by priority.{n}\
                 Format: <operator><priority>{n}\
                 <priority> is a signed integer.{n}\
@@ -674,20 +675,12 @@ fn main() {
 
     if journal.filter_priority.is_some() {
 
-        let &PriorityFilter(ref inequality, priority) = journal.filter_priority.as_ref().unwrap();
-
-        let placeholder = match inequality {
-            &Inequality::GreaterThan => format!("> {}", priority),
-            &Inequality::GreaterThanOrEqual => format!(">= {}", priority),
-            &Inequality::LessThan => format!("< {}", priority),
-            &Inequality::LessThanOrEqual => format!("<= {}", priority),
-            &Inequality::Equal => format!("== {}", priority)
-        };
+        let tree_art = priority_pretty_tree_art(journal.filter_priority.as_ref().unwrap());
 
         println!("{:>11} {} {}",
             "",
             "Filtering tasks by priority".bold().white(),
-            placeholder
+            tree_art
         );
 
         display_divider = true;
@@ -1427,7 +1420,7 @@ struct GTD {
     filter_by_only_tags: bool,
     filter_by_only_contexts: bool,
     due_within: Duration,
-    filter_priority: Option<PriorityFilter>,
+    filter_priority: Option<PriorityFilterTree>,
     hide_tasks_by_default: bool,
     show_overdue: bool,
     show_incomplete: bool,
@@ -2109,17 +2102,10 @@ impl GTD {
 
         if self.filter_priority.is_some() {
 
-            let &PriorityFilter(ref inequality, priority) = self.filter_priority.as_ref().unwrap();
+            let priority_filter = self.filter_priority.as_ref().unwrap();
 
-            let result = match inequality {
-                &Inequality::GreaterThan => task.priority > priority,
-                &Inequality::GreaterThanOrEqual => task.priority >= priority,
-                &Inequality::LessThan => task.priority < priority,
-                &Inequality::LessThanOrEqual => task.priority <= priority,
-                &Inequality::Equal => task.priority == priority
-            };
+            return !priority_satisfy_tree(priority_filter, task.priority);
 
-            return !result;
         }
 
         // TODO: redundant; remove
@@ -3716,7 +3702,7 @@ fn signed_decimal(input: Input<u8>) -> U8Result<i64> {
 // TODO: move this somewhere else
 type Priority = i64;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Inequality {
     GreaterThan,
     GreaterThanOrEqual,
@@ -3725,15 +3711,302 @@ enum Inequality {
     Equal
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct PriorityFilter(Inequality, Priority);
 
-fn parse_show_priority(input: Input<u8>) -> U8Result<PriorityFilter> {
+#[derive(Debug, Clone)]
+enum PriorityFilterTree {
+    Union(Box<PriorityFilterTree>, Box<PriorityFilterTree>),
+    Intersection(Box<PriorityFilterTree>, Box<PriorityFilterTree>),
+    Leaf(PriorityFilter)
+}
+
+impl PriorityFilterTree {
+    fn is_leaf(&self) -> bool {
+        match *self {
+            PriorityFilterTree::Leaf(_) => true,
+            _ => false,
+        }
+    }
+}
+
+fn priority_pretty_tree_art(filter_tree: &PriorityFilterTree) -> String {
+
+    match filter_tree {
+        &PriorityFilterTree::Leaf(ref filter) => {
+
+            let &PriorityFilter(ref inequality, priority) = filter;
+
+            let placeholder = match inequality {
+                &Inequality::GreaterThan => format!("> {}", priority),
+                &Inequality::GreaterThanOrEqual => format!(">= {}", priority),
+                &Inequality::LessThan => format!("< {}", priority),
+                &Inequality::LessThanOrEqual => format!("<= {}", priority),
+                &Inequality::Equal => format!("== {}", priority)
+            };
+
+            return placeholder;
+
+        },
+        &PriorityFilterTree::Union(ref left_tree, ref right_tree) => {
+
+            let left_tree = if left_tree.is_leaf() {
+                priority_pretty_tree_art(left_tree)
+            } else {
+                format!("({})", priority_pretty_tree_art(left_tree))
+            };
+
+            let right_tree = if right_tree.is_leaf() {
+                priority_pretty_tree_art(right_tree)
+            } else {
+                format!("({})", priority_pretty_tree_art(right_tree))
+            };
+
+            return format!("{} or {}", left_tree, right_tree);
+        },
+        &PriorityFilterTree::Intersection(ref left_tree, ref right_tree) => {
+
+            let left_tree = if left_tree.is_leaf() {
+                priority_pretty_tree_art(left_tree)
+            } else {
+                format!("({})", priority_pretty_tree_art(left_tree))
+            };
+
+            let right_tree = if right_tree.is_leaf() {
+                priority_pretty_tree_art(right_tree)
+            } else {
+                format!("({})", priority_pretty_tree_art(right_tree))
+            };
+
+            return format!("{} and {}", left_tree, right_tree);
+        }
+    }
+
+}
+
+fn priority_satisfy_tree(filter_tree: &PriorityFilterTree, task_priority: Priority) -> bool {
+
+    match filter_tree {
+        &PriorityFilterTree::Leaf(ref filter) => {
+
+            let &PriorityFilter(ref inequality, priority) = filter;
+
+            let result = match inequality {
+                &Inequality::GreaterThan => task_priority > priority,
+                &Inequality::GreaterThanOrEqual => task_priority >= priority,
+                &Inequality::LessThan => task_priority < priority,
+                &Inequality::LessThanOrEqual => task_priority <= priority,
+                &Inequality::Equal => task_priority == priority
+            };
+
+            return result;
+
+        },
+        &PriorityFilterTree::Union(ref left_tree, ref right_tree) => {
+
+            if priority_satisfy_tree(left_tree, task_priority) {
+                return true;
+            }
+
+            if priority_satisfy_tree(right_tree, task_priority) {
+                return true;
+            }
+
+            return false;
+        },
+        &PriorityFilterTree::Intersection(ref left_tree, ref right_tree) => {
+
+            if !priority_satisfy_tree(left_tree, task_priority) {
+                return false;
+            }
+
+            if !priority_satisfy_tree(right_tree, task_priority) {
+                return false;
+            }
+
+            return true;
+        }
+    }
+
+}
+
+fn parse_show_priority(input: Input<u8>) -> U8Result<PriorityFilterTree> {
+
+    parse!{input;
+
+        skip_many(|i| space_or_tab(i));
+
+        let result = parse_priority_filter_tree();
+
+        skip_many(|i| space_or_tab(i));
+        eof();
+
+        ret result
+    }
+
+}
+
+fn parse_priority_filter_tree(input: Input<u8>) -> U8Result<PriorityFilterTree> {
+
+    // NOTE TO SELF:
+    // order of parsing (with left-recursion):
+    // tree =
+    // (tree) <|>
+    // tree and tree <|>
+    // tree or tree <|>
+    // parse_priority_filter
+    //
+    // parsing order with left-recursion removed:
+    // tree =
+    //     (tree) |
+    //     parse_priority_filter rest |
+    //     parse_priority_filter
+
+    // rest(left) =
+    //     and tree rest |
+    //     and tree |
+    //     or tree rest |
+    //     or tree
 
     or(input,
         |input| parse!{input;
 
+            token(b'(');
             skip_many(|i| space_or_tab(i));
+
+            let tree = parse_priority_filter_tree();
+
+            skip_many(|i| space_or_tab(i));
+            token(b')');
+
+            ret tree
+
+        },
+        |input| or(input,
+            |input| parse!{input;
+
+                let filter = parse_priority_filter();
+
+                skip_many(|i| space_or_tab(i));
+
+                let result = parse_priority_filter_tree_rest({
+                    PriorityFilterTree::Leaf(filter)
+                });
+
+                ret result
+            },
+            |input| parse!{input;
+
+                let filter = parse_priority_filter();
+                ret PriorityFilterTree::Leaf(filter)
+            }
+        )
+    )
+
+}
+
+fn parse_priority_filter_tree_rest(input: Input<u8>, left_node: PriorityFilterTree) -> U8Result<PriorityFilterTree> {
+    parse!{input;
+        let result = parse_priority_filter_tree_rest_and(left_node.clone()) <|>
+            parse_priority_filter_tree_rest_or(left_node.clone());
+        ret result
+    }
+}
+
+fn parse_priority_filter_tree_rest_and(input: Input<u8>, left_node: PriorityFilterTree) -> U8Result<PriorityFilterTree> {
+    or(input,
+        |input| parse!{input;
+
+            string("&&".as_bytes()) <|>
+            string("&".as_bytes()) <|>
+            string("and".as_bytes());
+
+            skip_many(|i| space_or_tab(i));
+
+            let right_node = parse_priority_filter_tree();
+
+            skip_many(|i| space_or_tab(i));
+
+            let rest = parse_priority_filter_tree_rest({
+                let left_node = Box::new(left_node.clone());
+                let right_node = Box::new(right_node);
+
+                PriorityFilterTree::Intersection(left_node, right_node)
+            });
+
+            ret rest
+
+        },
+        |input| parse!{input;
+
+            string("&&".as_bytes()) <|>
+            string("&".as_bytes()) <|>
+            string("and".as_bytes());
+
+            skip_many(|i| space_or_tab(i));
+
+            let right_node = parse_priority_filter_tree();
+
+            ret {
+                let left_node = Box::new(left_node.clone());
+                let right_node = Box::new(right_node);
+
+                PriorityFilterTree::Intersection(left_node, right_node)
+            }
+
+        }
+    )
+}
+
+fn parse_priority_filter_tree_rest_or(input: Input<u8>, left_node: PriorityFilterTree) -> U8Result<PriorityFilterTree> {
+    or(input,
+        |input| parse!{input;
+
+            string("||".as_bytes()) <|>
+            string("|".as_bytes()) <|>
+            string("or".as_bytes());
+
+            skip_many(|i| space_or_tab(i));
+
+            let right_node = parse_priority_filter_tree();
+
+            skip_many(|i| space_or_tab(i));
+
+            let rest = parse_priority_filter_tree_rest({
+                let left_node = Box::new(left_node.clone());
+                let right_node = Box::new(right_node);
+
+                PriorityFilterTree::Union(left_node, right_node)
+            });
+
+            ret rest
+
+        },
+        |input| parse!{input;
+
+            string("||".as_bytes()) <|>
+            string("|".as_bytes()) <|>
+            string("or".as_bytes());
+
+            skip_many(|i| space_or_tab(i));
+
+            let right_node = parse_priority_filter_tree();
+
+            ret {
+                let left_node = Box::new(left_node.clone());
+                let right_node = Box::new(right_node);
+
+                PriorityFilterTree::Union(left_node, right_node)
+            }
+
+        }
+    )
+}
+
+fn parse_priority_filter(input: Input<u8>) -> U8Result<PriorityFilter> {
+
+    or(input,
+        |input| parse!{input;
 
             let operator = parse_inequality();
 
@@ -3741,30 +4014,15 @@ fn parse_show_priority(input: Input<u8>) -> U8Result<PriorityFilter> {
 
             let priority = parse_priority_number();
 
-            skip_many(|i| space_or_tab(i));
-            eof();
-
             ret PriorityFilter(operator, priority)
         },
         |input| parse!{input;
 
-            skip_many(|i| space_or_tab(i));
-
             let priority = parse_priority_number();
-
-            skip_many(|i| space_or_tab(i));
-            eof();
 
             ret PriorityFilter(Inequality::Equal, priority)
         }
     )
-}
-
-fn __parse_inequality<'a>(input: Input<'a, u8>, needle: &str, output: Inequality) -> SimpleResult<'a, u8, Inequality> {
-    parse!{input;
-        string_ignore_case(needle.as_bytes());
-        ret output
-    }
 }
 
 fn parse_inequality(input: Input<u8>) -> U8Result<Inequality> {
@@ -3778,6 +4036,13 @@ fn parse_inequality(input: Input<u8>) -> U8Result<Inequality> {
             __parse_inequality("=", Inequality::Equal);
 
         ret result
+    }
+}
+
+fn __parse_inequality<'a>(input: Input<'a, u8>, needle: &str, output: Inequality) -> SimpleResult<'a, u8, Inequality> {
+    parse!{input;
+        string_ignore_case(needle.as_bytes());
+        ret output
     }
 }
 
