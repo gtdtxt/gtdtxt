@@ -3302,7 +3302,7 @@ fn directive_required_project_prefix(input: Input<u8>) -> U8Result<Directive> {
     }
 }
 
-/* lines */
+/* line parsers */
 
 enum Line {
     Empty,
@@ -3387,7 +3387,7 @@ fn parse_task_separator<'a>(input: Input<'a, u8>, token: &[u8])
     }
 }
 
-/* comments */
+/* comments parsers */
 
 fn comments_one_line(i: Input<u8>) -> U8Result<()> {
     parse!{i;
@@ -3586,6 +3586,48 @@ fn end_of_line(i: Input<u8>) -> U8Result<&[u8]> {
             )
         )
     )
+}
+
+fn string_ignore_case<'a>(i: Input<'a, u8>, s: &[u8])
+    -> SimpleResult<'a, u8, &'a [u8]> {
+    let b = i.buffer();
+
+    if s.len() > b.len() {
+        return i.incomplete(s.len() - b.len());
+    }
+
+    let d = &b[..s.len()];
+
+    for j in 0..s.len() {
+
+        if !(s[j]).eq_ignore_ascii_case(&(d[j])) {
+            return i.replace(&b[j..]).err(Error::expected(d[j]))
+        }
+    }
+
+    i.replace(&b[s.len()..]).ret(d)
+}
+
+fn signed_decimal(input: Input<u8>) -> U8Result<i64> {
+
+    parse!{input;
+        let sign: i64 = or(
+            |i| parse!{i;
+                token(b'-');
+                ret -1
+            },
+            |i| parse!{i;
+                token(b'+');
+                ret 1
+            }
+        );
+
+        let num: i64 = decimal();
+
+        ret {
+            sign * num
+        }
+    }
 }
 
 /* time range parsers */
@@ -4187,48 +4229,6 @@ fn two_digits(i: Input<u8>) -> U8Result<u32> {
             resolved
         }
     }
-}
-
-fn signed_decimal(input: Input<u8>) -> U8Result<i64> {
-
-    parse!{input;
-        let sign: i64 = or(
-            |i| parse!{i;
-                token(b'-');
-                ret -1
-            },
-            |i| parse!{i;
-                token(b'+');
-                ret 1
-            }
-        );
-
-        let num: i64 = decimal();
-
-        ret {
-            sign * num
-        }
-    }
-}
-
-fn string_ignore_case<'a>(i: Input<'a, u8>, s: &[u8])
-    -> SimpleResult<'a, u8, &'a [u8]> {
-    let b = i.buffer();
-
-    if s.len() > b.len() {
-        return i.incomplete(s.len() - b.len());
-    }
-
-    let d = &b[..s.len()];
-
-    for j in 0..s.len() {
-
-        if !(s[j]).eq_ignore_ascii_case(&(d[j])) {
-            return i.replace(&b[j..]).err(Error::expected(d[j]))
-        }
-    }
-
-    i.replace(&b[s.len()..]).ret(d)
 }
 
 /* Filestats */
