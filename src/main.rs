@@ -3850,6 +3850,7 @@ fn parse_show_priority(input: Input<u8>) -> U8Result<PriorityFilterTree> {
 
 /*
 Source: http://www.engr.mun.ca/~theo/Misc/exp_parsing.htm#classic
+Source: https://en.wikipedia.org/wiki/Operator-precedence_parser#Precedence_climbing_method
 
 Original:
 E --> T {or T}
@@ -3897,7 +3898,7 @@ fn parse_priority_filter_tree_union(input: Input<u8>, left_node: PriorityFilterT
 
             string("||".as_bytes()) <|>
             string("|".as_bytes()) <|>
-            string("or".as_bytes());
+            string_ignore_case("or".as_bytes());
 
             skip_many(|i| space_or_tab(i));
 
@@ -3918,7 +3919,7 @@ fn parse_priority_filter_tree_union(input: Input<u8>, left_node: PriorityFilterT
 
             string("||".as_bytes()) <|>
             string("|".as_bytes()) <|>
-            string("or".as_bytes());
+            string_ignore_case("or".as_bytes());
 
             skip_many(|i| space_or_tab(i));
 
@@ -3964,7 +3965,7 @@ fn parse_priority_filter_tree_intersect(input: Input<u8>, left_node: PriorityFil
 
             string("&&".as_bytes()) <|>
             string("&".as_bytes()) <|>
-            string("and".as_bytes());
+            string_ignore_case("and".as_bytes());
 
             skip_many(|i| space_or_tab(i));
 
@@ -3985,7 +3986,7 @@ fn parse_priority_filter_tree_intersect(input: Input<u8>, left_node: PriorityFil
 
             string("&&".as_bytes()) <|>
             string("&".as_bytes()) <|>
-            string("and".as_bytes());
+            string_ignore_case("and".as_bytes());
 
             skip_many(|i| space_or_tab(i));
 
