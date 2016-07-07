@@ -3859,20 +3859,16 @@ P --> "(" E ")" | leaf
 Expanded:
 E = T K | T
 K = or T K | or T
--
 T = P L | P
 L = and P L | and P
--
 P = "(" E ")" | leaf
 
 Renamed variables:
 tree = maybe_predicate_intersect union | maybe_predicate_intersect
-union = or maybe_predicate_intersect union | or maybe_predicate_intersect // done
--
-maybe_predicate_intersect = predicate intersect | predicate // done
-intersect(left) = and predicate intersect | and predicate // done
--
-predicate = "(" tree ")" | leaf // done
+union = or maybe_predicate_intersect union | or maybe_predicate_intersect
+maybe_predicate_intersect = predicate intersect | predicate
+intersect = and predicate intersect | and predicate
+predicate = "(" tree ")" | leaf
  */
 
 fn parse_priority_filter_tree(input: Input<u8>) -> U8Result<PriorityFilterTree> {
