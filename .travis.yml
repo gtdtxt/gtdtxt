@@ -43,48 +43,48 @@ matrix:
     - os: linux
       env: TARGET=x86_64-unknown-linux-musl CHANNEL=stable
     # Beta channel
-    - os: linux
-      env: TARGET=armv7-unknown-linux-gnueabihf CHANNEL=beta
-      # sudo is needed for binfmt_misc, which is needed for transparent user qemu emulation
-      sudo: required
-      addons:
-        apt:
-          # Use the same packages the stable version uses
-          packages: *armv7_unknown_linux_gnueabihf
-    - os: osx
-      env: TARGET=i686-apple-darwin CHANNEL=beta
-    - os: linux
-      env: TARGET=i686-unknown-linux-gnu CHANNEL=beta
-      addons:
-        apt:
-          packages: *i686_unknown_linux_gnu
-    - os: osx
-      env: TARGET=x86_64-apple-darwin CHANNEL=beta
-    - os: linux
-      env: TARGET=x86_64-unknown-linux-gnu CHANNEL=beta
-    - os: linux
-      env: TARGET=x86_64-unknown-linux-musl CHANNEL=beta
+    # - os: linux
+    #   env: TARGET=armv7-unknown-linux-gnueabihf CHANNEL=beta
+    #   # sudo is needed for binfmt_misc, which is needed for transparent user qemu emulation
+    #   sudo: required
+    #   addons:
+    #     apt:
+    #       # Use the same packages the stable version uses
+    #       packages: *armv7_unknown_linux_gnueabihf
+    # - os: osx
+    #   env: TARGET=i686-apple-darwin CHANNEL=beta
+    # - os: linux
+    #   env: TARGET=i686-unknown-linux-gnu CHANNEL=beta
+    #   addons:
+    #     apt:
+    #       packages: *i686_unknown_linux_gnu
+    # - os: osx
+    #   env: TARGET=x86_64-apple-darwin CHANNEL=beta
+    # - os: linux
+    #   env: TARGET=x86_64-unknown-linux-gnu CHANNEL=beta
+    # - os: linux
+    #   env: TARGET=x86_64-unknown-linux-musl CHANNEL=beta
     # Nightly channel
-    - os: linux
-      env: TARGET=armv7-unknown-linux-gnueabihf CHANNEL=nightly
-      sudo: required
-      addons:
-        apt:
-          # Use the same packages the stable version uses
-          packages: *armv7_unknown_linux_gnueabihf
-    - os: osx
-      env: TARGET=i686-apple-darwin CHANNEL=nightly
-    - os: linux
-      env: TARGET=i686-unknown-linux-gnu CHANNEL=nightly
-      addons:
-        apt:
-          packages: *i686_unknown_linux_gnu
-    - os: osx
-      env: TARGET=x86_64-apple-darwin CHANNEL=nightly
-    - os: linux
-      env: TARGET=x86_64-unknown-linux-gnu CHANNEL=nightly
-    - os: linux
-      env: TARGET=x86_64-unknown-linux-musl CHANNEL=nightly
+    # - os: linux
+    #   env: TARGET=armv7-unknown-linux-gnueabihf CHANNEL=nightly
+    #   sudo: required
+    #   addons:
+    #     apt:
+    #       # Use the same packages the stable version uses
+    #       packages: *armv7_unknown_linux_gnueabihf
+    # - os: osx
+    #   env: TARGET=i686-apple-darwin CHANNEL=nightly
+    # - os: linux
+    #   env: TARGET=i686-unknown-linux-gnu CHANNEL=nightly
+    #   addons:
+    #     apt:
+    #       packages: *i686_unknown_linux_gnu
+    # - os: osx
+    #   env: TARGET=x86_64-apple-darwin CHANNEL=nightly
+    # - os: linux
+    #   env: TARGET=x86_64-unknown-linux-gnu CHANNEL=nightly
+    # - os: linux
+    #   env: TARGET=x86_64-unknown-linux-musl CHANNEL=nightly
 
 before_install:
   - export PATH="$PATH:$HOME/.cargo/bin"
