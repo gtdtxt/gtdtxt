@@ -302,10 +302,12 @@ fn main() {
             .next_line_help(true)
             .use_delimiter(false)
             .help("Filter tasks by priority.{n}\
-                Format: <operator><priority>{n}\
+                Format of filter: <operator><priority>{n}\
                 <priority> is a signed integer.{n}\
                 There may be whitespace between <operator> and <priority>.{n}\
                 Operators: <=, <, >=, >, =, =={n}\
+                You may combine filters with: and, &, &&, or, |, ||{n}\
+                You may wrap filter expressions in parentheses.{n}\
                 {n}\
                 Example: >= 42 (show tasks greater or equal to 42){n}")
             .short("y")
