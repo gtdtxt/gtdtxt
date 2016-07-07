@@ -299,6 +299,29 @@ fn main() {
             })
         )
         .arg(
+            Arg::with_name("show-priority")
+            .next_line_help(true)
+            .help("Filter tasks by priority.{n}\
+                Format: <operator><priority>{n}\
+                <priority> is a signed integer.{n}\
+                There may be whitespace between <operator> and <priority>.{n}\
+                Operators: <=, <, >=, >, =, =={n}\
+                {n}\
+                Example: >= 42 (show tasks greater or equal to 42){n}")
+            .short("y")
+            .long("show-priority")
+            .required(false)
+            .takes_value(true)
+            .multiple(false)
+            .validator(|filter| {
+                let filter = filter.trim();
+                if filter.len() <= 0 {
+                    return Err(String::from("invalid 'show-priority' filter"));
+                }
+                return Ok(());
+            })
+        )
+        .arg(
             Arg::with_name("path to gtdtxt file")
             .help("Path to gtdtxt file.")
             .required(true)
@@ -328,6 +351,23 @@ fn main() {
 
     let base_root = format!("{}", env::current_dir().unwrap().display());
     let mut journal = GTD::new(base_root);
+
+    // priority range filter
+    if let Some(show_priority) = cmd_matches.value_of("show-priority") {
+
+        let show_priority = show_priority.trim();
+
+        match parse_only(|i| parse_show_priority(i), show_priority.as_bytes()) {
+            Ok(result) => {
+                journal.filter_priority = Some(result);
+            },
+            Err(_) => {
+                println!("Unable to parse value to option `--show-priority`: {}", show_priority);
+                process::exit(1);
+                // panic!("{:?}", e);
+            }
+        }
+    }
 
     // due within filter
     if let Some(due_within) = cmd_matches.value_of("due-within") {
@@ -632,6 +672,27 @@ fn main() {
     // Display tasks
 
     let mut display_divider = false;
+
+    if journal.filter_priority.is_some() {
+
+        let &PriorityFilter(ref inequality, priority) = journal.filter_priority.as_ref().unwrap();
+
+        let placeholder = match inequality {
+            &Inequality::GreaterThan => format!("> {}", priority),
+            &Inequality::GreaterThanOrEqual => format!(">= {}", priority),
+            &Inequality::LessThan => format!("< {}", priority),
+            &Inequality::LessThanOrEqual => format!("<= {}", priority),
+            &Inequality::Equal => format!("== {}", priority)
+        };
+
+        println!("{:>11} {} {}",
+            "",
+            "Filtering tasks by priority".bold().white(),
+            placeholder
+        );
+
+        display_divider = true;
+    }
 
     if journal.due_within.num_seconds() > 0 {
 
@@ -1367,7 +1428,7 @@ struct GTD {
     filter_by_only_tags: bool,
     filter_by_only_contexts: bool,
     due_within: Duration,
-
+    filter_priority: Option<PriorityFilter>,
     hide_tasks_by_default: bool,
     show_overdue: bool,
     show_incomplete: bool,
@@ -1461,7 +1522,7 @@ impl GTD {
             filter_by_only_tags: false,
             filter_by_only_contexts: false,
             due_within: Duration::seconds(0),
-
+            filter_priority: None,
             hide_tasks_by_default: false,
             show_overdue: false,
             show_incomplete: false,
@@ -2045,6 +2106,21 @@ impl GTD {
 
         if self.hide_flagged {
             return task.flag;
+        }
+
+        if self.filter_priority.is_some() {
+
+            let &PriorityFilter(ref inequality, priority) = self.filter_priority.as_ref().unwrap();
+
+            let result = match inequality {
+                &Inequality::GreaterThan => task.priority > priority,
+                &Inequality::GreaterThanOrEqual => task.priority >= priority,
+                &Inequality::LessThan => task.priority < priority,
+                &Inequality::LessThanOrEqual => task.priority <= priority,
+                &Inequality::Equal => task.priority == priority
+            };
+
+            return !result;
         }
 
         // TODO: redundant; remove
@@ -2873,6 +2949,12 @@ fn task_time(input: Input<u8>) -> U8Result<TaskBlock> {
     }
 }
 
+fn parse_priority_number(input: Input<u8>) -> U8Result<i64> {
+    parse!{input;
+        let priority: i64 = signed_decimal() <|> decimal();
+        ret priority
+    }
+}
 
 fn task_priority(input: Input<u8>) -> U8Result<TaskBlock> {
 
@@ -2885,7 +2967,7 @@ fn task_priority(input: Input<u8>) -> U8Result<TaskBlock> {
 
         skip_many(|i| space_or_tab(i));
 
-        let priority: i64 = signed_decimal() <|> decimal();
+        let priority: i64 = parse_priority_number();
 
         let _nothing: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
 
@@ -3627,6 +3709,76 @@ fn signed_decimal(input: Input<u8>) -> U8Result<i64> {
         ret {
             sign * num
         }
+    }
+}
+
+/* inequality parsers */
+
+// TODO: move this somewhere else
+type Priority = i64;
+
+#[derive(Debug)]
+enum Inequality {
+    GreaterThan,
+    GreaterThanOrEqual,
+    LessThan,
+    LessThanOrEqual,
+    Equal
+}
+
+#[derive(Debug)]
+struct PriorityFilter(Inequality, Priority);
+
+fn parse_show_priority(input: Input<u8>) -> U8Result<PriorityFilter> {
+
+    or(input,
+        |input| parse!{input;
+
+            skip_many(|i| space_or_tab(i));
+
+            let operator = parse_inequality();
+
+            skip_many(|i| space_or_tab(i));
+
+            let priority = parse_priority_number();
+
+            skip_many(|i| space_or_tab(i));
+            eof();
+
+            ret PriorityFilter(operator, priority)
+        },
+        |input| parse!{input;
+
+            skip_many(|i| space_or_tab(i));
+
+            let priority = parse_priority_number();
+
+            skip_many(|i| space_or_tab(i));
+            eof();
+
+            ret PriorityFilter(Inequality::Equal, priority)
+        }
+    )
+}
+
+fn __parse_inequality<'a>(input: Input<'a, u8>, needle: &str, output: Inequality) -> SimpleResult<'a, u8, Inequality> {
+    parse!{input;
+        string_ignore_case(needle.as_bytes());
+        ret output
+    }
+}
+
+fn parse_inequality(input: Input<u8>) -> U8Result<Inequality> {
+    parse!{input;
+
+        let result = __parse_inequality(">=", Inequality::GreaterThanOrEqual) <|>
+            __parse_inequality(">", Inequality::GreaterThan) <|>
+            __parse_inequality("<=", Inequality::LessThanOrEqual) <|>
+            __parse_inequality("<", Inequality::LessThan) <|>
+            __parse_inequality("==", Inequality::Equal) <|>
+            __parse_inequality("=", Inequality::Equal);
+
+        ret result
     }
 }
 
