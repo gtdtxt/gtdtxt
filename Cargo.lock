@@ -2,7 +2,7 @@
 name = "gtdtxt"
 version = "0.9.1"
 dependencies = [
- "chomp 0.2.5 (git+https://github.com/m4rw3r/chomp?rev=c1287f2e7ee1558d50a8cab95e1bf900f5a47061)",
+ "chomp 0.2.5 (git+https://github.com/dashed/chomp.git?branch=macro-fix2)",
  "chrono 0.2.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "colored 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -50,7 +50,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "chomp"
 version = "0.2.5"
-source = "git+https://github.com/m4rw3r/chomp?rev=c1287f2e7ee1558d50a8cab95e1bf900f5a47061#c1287f2e7ee1558d50a8cab95e1bf900f5a47061"
+source = "git+https://github.com/dashed/chomp.git?branch=macro-fix2#1ef44b699c2c9b0d22c4f70fe3199a4124b1dd53"
 dependencies = [
  "bitflags 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "conv 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",

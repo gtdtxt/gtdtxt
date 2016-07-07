@@ -3,6 +3,11 @@ name = "gtdtxt"
 version = "0.9.1"
 authors = ["Alberto Leal <mailforalberto@gmail.com>"]
 
+[[bin]]
+doc = false
+name = "gtdtxt"
+path = "src/main.rs"
+
 [profile.dev]
 opt-level = 0      # controls the `--opt-level` the compiler builds with
 debug = true       # controls whether the compiler passes `-g`
@@ -11,8 +16,11 @@ debug = true       # controls whether the compiler passes `-g`
 version = "0.1"
 
 [dependencies.chomp]
-git = "https://github.com/m4rw3r/chomp"
-rev = "c1287f2e7ee1558d50a8cab95e1bf900f5a47061"
+git = "https://github.com/dashed/chomp.git"
+branch = "macro-fix2"
+# ref = "1ef44b699c2c9b0d22c4f70fe3199a4124b1dd53"
+# git = "https://github.com/m4rw3r/chomp"
+# rev = "c1287f2e7ee1558d50a8cab95e1bf900f5a47061"
 # version = "~0.2.5"
 
 [dependencies.chrono]
