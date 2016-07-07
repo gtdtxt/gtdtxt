@@ -102,13 +102,6 @@ SUBCOMMANDS:
 
 ```
 
-### Tutorial
-
-Create an empty text file. Example: `todo.gtd`
-
-*TBA*
-
-
 ## Install
 
 Direct downloads are available through the [releases page](https://github.com/gtdtxt/gtdtxt/releases).
@@ -126,6 +119,12 @@ brew install https://raw.githubusercontent.com/gtdtxt/gtdtxt/master/gtdtxt.rb
 - [reference-todo.gtd](./reference-todo.gtd)
 - [examples/todo.gtd](./examples/todo.gtd)
 
+### Tutorial
+
+Create an empty text file. Example: `todo.gtd`
+
+*TBA*
+
 
 ## Issues, Questions, Comments, etc?
 
@@ -134,4 +133,4 @@ Feel free to open an issue within this GitHub repository: https://github.com/gtd
 License
 =======
 
-MIT
+MIT.
