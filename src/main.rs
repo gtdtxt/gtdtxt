@@ -282,7 +282,7 @@ fn main() {
         .arg(
             Arg::with_name("show-with-context")
             .next_line_help(true)
-            .help("Show tasks with given list of comma separated contexts.\
+            .help("Show tasks with given list of comma separated contexts.{n}\
                 Used with --hide-by-default{n}\
                 Example: phone, computer, internet connection, office{n}")
             .short("s")
