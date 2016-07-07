@@ -20,7 +20,7 @@ For a pragmatic introduction to GTD, see:
 ## Usage
 
 ```
-gtdtxt v0.11.0 (semver.org)
+gtdtxt v0.11.1 (semver.org)
 Alberto Leal <mailforalberto@gmail.com> (github.com/dashed)
 Getting Things Done (GTD) command-line application that parses human-readable to-do list text files.
 
@@ -124,7 +124,24 @@ brew install https://raw.githubusercontent.com/gtdtxt/gtdtxt/master/gtdtxt.rb
 
 ### Tutorial
 
-Create an empty text file. Example: `todo.gtd`
+Create an empty text file using your favourite text-editor. Example: `todo.gtd`
+
+**NOTE:** You may name your file anything with any extension. For this tutorial, we shall refer to files with `.gtd` extension as being intended to be parsed by `gtdtxt`.
+
+#### Create your first few tasks
+
+
+
+```
+task: buy milk
+```
+
+```
+task: buy milk
+
+task: world domination
+```
+
 
 *TBA*
 

@@ -1,6 +1,6 @@
 [package]
 name = "gtdtxt"
-version = "0.11.0"
+version = "0.11.1"
 authors = ["Alberto Leal <mailforalberto@gmail.com>"]
 
 [[bin]]
