@@ -53,7 +53,6 @@ fn main() {
     let cmd_matches = App::new("gtdtxt")
         .setting(AppSettings::ArgRequiredElseHelp)
         .setting(AppSettings::GlobalVersion)
-        .setting(AppSettings::UnifiedHelpMessage)
         .version(version) // semver semantics
         .about("Getting Things Done (GTD) command-line application that parses human-readable to-do list text files.")
         .author("Alberto Leal <mailforalberto@gmail.com> (github.com/dashed)")
