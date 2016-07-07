@@ -3848,28 +3848,164 @@ fn parse_show_priority(input: Input<u8>) -> U8Result<PriorityFilterTree> {
 
 }
 
+/*
+Source: http://www.engr.mun.ca/~theo/Misc/exp_parsing.htm#classic
+
+Original:
+E --> T {or T}
+T --> P {and P}
+P --> "(" E ")" | leaf
+
+Expanded:
+E = T K | T
+K = or T K | or T
+-
+T = P L | P
+L = and P L | and P
+-
+P = "(" E ")" | leaf
+
+Renamed variables:
+tree = maybe_predicate_intersect union | maybe_predicate_intersect
+union = or maybe_predicate_intersect union | or maybe_predicate_intersect // done
+-
+maybe_predicate_intersect = predicate intersect | predicate // done
+intersect(left) = and predicate intersect | and predicate // done
+-
+predicate = "(" tree ")" | leaf // done
+ */
+
 fn parse_priority_filter_tree(input: Input<u8>) -> U8Result<PriorityFilterTree> {
+    or(input,
+        |input| parse!{input;
 
-    // NOTE TO SELF:
-    // order of parsing (with left-recursion):
-    // tree =
-    // (tree) <|>
-    // tree and tree <|>
-    // tree or tree <|>
-    // parse_priority_filter
-    //
-    // parsing order with left-recursion removed:
-    // tree =
-    //     (tree) |
-    //     parse_priority_filter rest |
-    //     parse_priority_filter
+            let left_node = parse_priority_filter_tree_maybe_predicate_intersect();
 
-    // rest(left) =
-    //     and tree rest |
-    //     and tree |
-    //     or tree rest |
-    //     or tree
+            skip_many(|i| space_or_tab(i));
 
+            let right_node = parse_priority_filter_tree_union(left_node);
+            ret right_node
+        },
+        |input| parse!{input;
+
+            let right_node = parse_priority_filter_tree_maybe_predicate_intersect();
+            ret right_node
+        }
+    )
+}
+
+fn parse_priority_filter_tree_union(input: Input<u8>, left_node: PriorityFilterTree)
+-> U8Result<PriorityFilterTree> {
+    or(input,
+        |input| parse!{input;
+
+            string("||".as_bytes()) <|>
+            string("|".as_bytes()) <|>
+            string("or".as_bytes());
+
+            skip_many(|i| space_or_tab(i));
+
+            let right_node = parse_priority_filter_tree_maybe_predicate_intersect();
+
+            skip_many(|i| space_or_tab(i));
+
+            let tree = parse_priority_filter_tree_union({
+                let left_node = Box::new(left_node.clone());
+                let right_node = Box::new(right_node);
+
+                PriorityFilterTree::Union(left_node, right_node)
+            });
+
+            ret tree
+        },
+        |input| parse!{input;
+
+            string("||".as_bytes()) <|>
+            string("|".as_bytes()) <|>
+            string("or".as_bytes());
+
+            skip_many(|i| space_or_tab(i));
+
+            let right_node = parse_priority_filter_tree_maybe_predicate_intersect();
+
+            ret {
+                let left_node = Box::new(left_node.clone());
+                let right_node = Box::new(right_node);
+
+                PriorityFilterTree::Union(left_node, right_node)
+            }
+        },
+    )
+}
+
+fn parse_priority_filter_tree_maybe_predicate_intersect(input: Input<u8>)
+-> U8Result<PriorityFilterTree> {
+
+    or(input,
+        |input| parse!{input;
+
+            let left_node = parse_priority_filter_tree_predicate();
+
+            skip_many(|i| space_or_tab(i));
+
+            let right_node = parse_priority_filter_tree_intersect(left_node);
+            ret right_node;
+
+        },
+        |input| parse!{input;
+
+            let right_node = parse_priority_filter_tree_predicate();
+            ret right_node;
+        }
+    )
+
+}
+
+fn parse_priority_filter_tree_intersect(input: Input<u8>, left_node: PriorityFilterTree)
+-> U8Result<PriorityFilterTree> {
+    or(input,
+        |input| parse!{input;
+
+            string("&&".as_bytes()) <|>
+            string("&".as_bytes()) <|>
+            string("and".as_bytes());
+
+            skip_many(|i| space_or_tab(i));
+
+            let right_node = parse_priority_filter_tree_predicate();
+
+            skip_many(|i| space_or_tab(i));
+
+            let tree = parse_priority_filter_tree_intersect({
+                let left_node = Box::new(left_node.clone());
+                let right_node = Box::new(right_node);
+
+                PriorityFilterTree::Intersection(left_node, right_node)
+            });
+
+            ret tree
+        },
+        |input| parse!{input;
+
+            string("&&".as_bytes()) <|>
+            string("&".as_bytes()) <|>
+            string("and".as_bytes());
+
+            skip_many(|i| space_or_tab(i));
+
+            let right_node = parse_priority_filter_tree_predicate();
+
+            ret {
+                let left_node = Box::new(left_node.clone());
+                let right_node = Box::new(right_node);
+
+                PriorityFilterTree::Intersection(left_node, right_node)
+            }
+        },
+    )
+}
+
+fn parse_priority_filter_tree_predicate(input: Input<u8>) -> U8Result<PriorityFilterTree> {
     or(input,
         |input| parse!{input;
 
@@ -3884,124 +4020,13 @@ fn parse_priority_filter_tree(input: Input<u8>) -> U8Result<PriorityFilterTree> 
             ret tree
 
         },
-        |input| or(input,
-            |input| parse!{input;
-
-                let filter = parse_priority_filter();
-
-                skip_many(|i| space_or_tab(i));
-
-                let result = parse_priority_filter_tree_rest({
-                    PriorityFilterTree::Leaf(filter)
-                });
-
-                ret result
-            },
-            |input| parse!{input;
-
-                let filter = parse_priority_filter();
-                ret PriorityFilterTree::Leaf(filter)
-            }
-        )
-    )
-
-}
-
-fn parse_priority_filter_tree_rest(input: Input<u8>, left_node: PriorityFilterTree) -> U8Result<PriorityFilterTree> {
-    parse!{input;
-        let result = parse_priority_filter_tree_rest_and(left_node.clone()) <|>
-            parse_priority_filter_tree_rest_or(left_node.clone());
-        ret result
-    }
-}
-
-fn parse_priority_filter_tree_rest_and(input: Input<u8>, left_node: PriorityFilterTree) -> U8Result<PriorityFilterTree> {
-    or(input,
         |input| parse!{input;
 
-            string("&&".as_bytes()) <|>
-            string("&".as_bytes()) <|>
-            string("and".as_bytes());
+            let filter = parse_priority_filter();
 
-            skip_many(|i| space_or_tab(i));
-
-            let right_node = parse_priority_filter_tree();
-
-            skip_many(|i| space_or_tab(i));
-
-            let rest = parse_priority_filter_tree_rest({
-                let left_node = Box::new(left_node.clone());
-                let right_node = Box::new(right_node);
-
-                PriorityFilterTree::Intersection(left_node, right_node)
-            });
-
-            ret rest
+            ret PriorityFilterTree::Leaf(filter)
 
         },
-        |input| parse!{input;
-
-            string("&&".as_bytes()) <|>
-            string("&".as_bytes()) <|>
-            string("and".as_bytes());
-
-            skip_many(|i| space_or_tab(i));
-
-            let right_node = parse_priority_filter_tree();
-
-            ret {
-                let left_node = Box::new(left_node.clone());
-                let right_node = Box::new(right_node);
-
-                PriorityFilterTree::Intersection(left_node, right_node)
-            }
-
-        }
-    )
-}
-
-fn parse_priority_filter_tree_rest_or(input: Input<u8>, left_node: PriorityFilterTree) -> U8Result<PriorityFilterTree> {
-    or(input,
-        |input| parse!{input;
-
-            string("||".as_bytes()) <|>
-            string("|".as_bytes()) <|>
-            string("or".as_bytes());
-
-            skip_many(|i| space_or_tab(i));
-
-            let right_node = parse_priority_filter_tree();
-
-            skip_many(|i| space_or_tab(i));
-
-            let rest = parse_priority_filter_tree_rest({
-                let left_node = Box::new(left_node.clone());
-                let right_node = Box::new(right_node);
-
-                PriorityFilterTree::Union(left_node, right_node)
-            });
-
-            ret rest
-
-        },
-        |input| parse!{input;
-
-            string("||".as_bytes()) <|>
-            string("|".as_bytes()) <|>
-            string("or".as_bytes());
-
-            skip_many(|i| space_or_tab(i));
-
-            let right_node = parse_priority_filter_tree();
-
-            ret {
-                let left_node = Box::new(left_node.clone());
-                let right_node = Box::new(right_node);
-
-                PriorityFilterTree::Union(left_node, right_node)
-            }
-
-        }
     )
 }
 
