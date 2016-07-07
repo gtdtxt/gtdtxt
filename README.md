@@ -20,7 +20,7 @@ For a pragmatic introduction to GTD, see:
 ## Usage
 
 ```
-gtdtxt v0.9.1 (semver.org)
+gtdtxt v0.10.0 (semver.org)
 Alberto Leal <mailforalberto@gmail.com> (github.com/dashed)
 Getting Things Done (GTD) command-line application that parses human-readable to-do list text files.
 
@@ -44,7 +44,8 @@ FLAGS:
     -f, --show-only-flagged           Show only flagged tasks.
     -a, --show-overdue                Show overdue tasks. Used with --hide-by-default
     -j, --show-project-tasks          Show tasks that are not in a project. Used with --hide-by-default
-    -z, --sort-overdue-by-priority    Sort overdue tasks by priority.
+    -z, --sort-overdue-by-priority    Sort overdue tasks by priority. By default overdue tasks are shown from oldest
+                                      due to recently due.
     -q, --validate                    Validate file and suppress any output.
     -V, --version                     Prints version information
 
@@ -55,7 +56,8 @@ OPTIONS:
         
     -c, --only-with-context <only-with-context>
         Show only tasks that have any given list of comma separated contexts.
-        Example: phone, computer, internet connection, office
+        Example: phone, computer, internet
+        connection, office
         
     -p, --only-with-project <only-with-project>
         Show only tasks with given project path.
@@ -65,9 +67,22 @@ OPTIONS:
         Show only tasks that have any given list of comma separated tags.
         Example: chore, art, to watch
         
+    -y, --show-priority <show-priority>
+        Filter tasks by priority.
+        Format: <operator><priority>
+        <priority> is a signed integer.
+        There may be
+        whitespace between <operator> and <priority>.
+        Operators: <=, <, >=, >, =, ==
+        
+        Example: >= 42 (show tasks
+        greater or equal to 42)
+        
     -s, --show-with-context <show-with-context>
-        Show tasks with given list of comma separated contexts.Used with --hide-by-default
-        Example: phone, computer, internet connection, office
+        Show tasks with given list of comma separated contexts.
+        Used with --hide-by-default
+        Example: phone,
+        computer, internet connection, office
         
     -k, --show-with-project <show-with-project>
         Show tasks with given project path.Used with --hide-by-default
@@ -82,7 +97,7 @@ ARGS:
 
 SUBCOMMANDS:
     current    Display current task
-    help       Prints this message or the help message of the given subcommand(s)
+    help       Prints this message or the help of the given subcommand(s)
     stats      Display statistics
 
 ```
@@ -98,10 +113,20 @@ Create an empty text file. Example: `todo.gtd`
 
 Direct downloads are available through the [releases page](https://github.com/gtdtxt/gtdtxt/releases).
 
+### OSX
+
 If you're on OSX, you may install using [Homebrew](http://brew.sh/):
 
 ```
 brew install https://raw.githubusercontent.com/gtdtxt/gtdtxt/master/gtdtxt.rb
+```
+
+### cargo install
+
+DONT COMMIT
+
+```
+cargo install gtdtxt
 ```
 
 ## Examples
