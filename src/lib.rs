@@ -1304,7 +1304,7 @@ type Tags = Vec<String>;
 type Priority = i64;
 type TimeLength = u64;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 enum Status {
     Done,
     Incubate,
@@ -3271,7 +3271,9 @@ fn task_id(input: Input<u8>) -> U8Result<TaskBlock> {
 #[derive(Debug)]
 enum StatusDirective {
     Require(bool),
-    Status(Status)
+    Status(Status),
+    // TODO: implement
+    // Explicit(Status)
 }
 
 // state for directives that are applied to all files
@@ -3353,7 +3355,7 @@ impl LocalDirectiveSwitches {
             task.status = Some(status.clone());
         }
 
-        // project:base
+        // inject:base
         if let Some(ref project_base) = self.inject_project_base {
 
             let project_base: &ProjectPath = project_base.as_ref().unwrap();
@@ -3371,8 +3373,91 @@ impl LocalDirectiveSwitches {
 
     fn pass_validation(&self, task: &Task, journal: &GTD) -> bool {
 
-        // require_status: None,
-        // require_project_prefix: None,
+        // require:status
+        if let Some(ref require_status) = self.require_status {
+
+            match *require_status.as_ref().unwrap() {
+
+                StatusDirective::Require(require) => {
+
+                    if require && task.status.is_none() {
+
+                        println!("From directive `require:status` in: {}", require_status.location());
+
+                        println!("The following task is missing an explicit `status` attribute:\n");
+
+                        _print_task(journal, task, false);
+                        process::exit(1);
+                    }
+                },
+
+                StatusDirective::Status(ref status) => {
+
+                    let task_status: Status = if task.status.is_none() {
+                        // tasks with no explicit task are 'not done' by default
+                        Status::NotDone
+                    } else {
+                        task.status.as_ref().unwrap().clone()
+                    };
+
+                    if *status != task_status {
+
+                        println!("From directive `require:status` in: {}", require_status.location());
+
+                        println!("The following task's `status` attribute needs to be {}:\n", status.string());
+
+                        _print_task(journal, task, false);
+                        process::exit(1);
+                    }
+                }
+
+            }
+        }
+
+        // require:project:prefix
+        if let Some(ref require_project_prefix) = self.require_project_prefix {
+
+            let required_project_prefix = require_project_prefix.as_ref().unwrap();
+
+            let has_required_project_prefix: bool = match task.project {
+                None => false,
+                Some(ref project_path) => {
+
+                    // ensure task.project has project_path as prefix
+
+                    if project_path.len() < required_project_prefix.len() {
+                        false
+                    } else {
+
+                        let mut matches = true;
+                        let mut idx = required_project_prefix.len();
+
+                        while idx > 0 {
+                            idx -= 1;
+
+                            if required_project_prefix[idx] != project_path[idx] {
+                                matches = false;
+                                break;
+                            }
+                        }
+
+                        matches
+                    }
+                }
+            };
+
+            if !has_required_project_prefix {
+
+                println!("From directive `require:project:prefix` in: {}", require_project_prefix.location());
+
+                println!("The following task's `project` attribute does not being with the required prefix: {}:\n",
+                    required_project_prefix.join(" / "));
+
+                _print_task(journal, task, false);
+                process::exit(1);
+            }
+
+        }
 
         // require:project
         if let Some(ref require_project) = self.require_project {
@@ -3380,82 +3465,17 @@ impl LocalDirectiveSwitches {
 
                 println!("From directive `require:project` in: {}", require_project.location());
 
-                println!("The following task is missing a project:");
+                println!("The following task is missing an explicit `project` attribute:\n");
 
                 _print_task(journal, task, false);
                 process::exit(1);
             }
         }
 
-
         return true;
     }
 
 }
-
-// TODO: remove
-// struct DirectiveSwitches__old {
-//     require_no_completed_tasks: Option<bool>,
-//     required_project_prefix: Option<Vec<String>>
-// }
-
-// impl DirectiveSwitches__old {
-//     fn new() -> Self {
-//         DirectiveSwitches__old {
-//             require_no_completed_tasks: None,
-//             required_project_prefix: None
-//         }
-//     }
-
-//     // TODO: this function produces side-effects; refactor
-//     fn pass_validation(&self, task: &Task, journal: &GTD) -> bool {
-
-//         match self.required_project_prefix {
-//             None => {},
-//             Some(ref required_project_prefix) => {
-
-//                 let has_required_project_prefix: bool = match task.project {
-//                     None => false,
-//                     Some(ref project_path) => {
-
-//                         // ensure task.project has project_path as prefix
-
-//                         if project_path.len() < required_project_prefix.len() {
-//                             false
-//                         } else {
-
-//                             let mut matches = true;
-//                             let mut idx = required_project_prefix.len();
-
-//                             while idx > 0 {
-//                                 idx -= 1;
-
-//                                 if required_project_prefix[idx] != project_path[idx] {
-//                                     matches = false;
-//                                     break;
-//                                 }
-//                             }
-
-//                             matches
-//                         }
-//                     }
-//                 };
-
-//                 if !has_required_project_prefix {
-
-//                     println!("The following task's project path does not begin with required project path prefix: {}",
-//                         required_project_prefix.join(" / "));
-
-//                     _print_task(journal, task, false);
-//                     process::exit(1);
-//                 }
-
-//             }
-//         };
-
-//         return true;
-//     }
-// }
 
 #[derive(Debug)]
 enum Directive {
