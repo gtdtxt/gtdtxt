@@ -1312,7 +1312,7 @@ type ProjectPath = Vec<String>;
 type Contexts = Vec<String>;
 type Tags = Vec<String>;
 type Priority = i64;
-type Time = u64;
+type TimeLength = u64;
 
 #[derive(Debug)]
 enum Status {
@@ -1343,7 +1343,7 @@ struct Task {
     contexts: Option<Contexts>,
     tags: Option<Tags>,
     priority: Priority,
-    time: Time,
+    time: TimeLength,
     // TODO: rename to flagged
     flag: bool,
 
@@ -1676,20 +1676,30 @@ impl GTD {
         return path_satisfies_tree(&(self.project_whitelist), path);
     }
 
-    fn add_task(&mut self, task: Task, directive_switch: &DirectiveSwitches) {
+    fn add_task(&mut self, task: Task, directive_switch: &LocalDirectiveSwitches) {
 
         // TODO: is this the best placement for this?
         let mut task = task;
         task.task_block_range_end = self.previous_task_block_line;
         let task = task;
 
-        // validation
+        /* pass task through local scoped directive switches */
+
+        let mut task = task;
+        directive_switch.transform_task(&mut task, self);
+        let task = task;
 
         if !directive_switch.pass_validation(&task, self) {
             // TODO: pass_validation prints errors and therefore produces side-effects; refactor
             return;
         }
 
+        /* pass task through global scoped directive switches */
+
+        // TODO: complete
+        // self.directive_switches.transform_task(&mut task, self);
+
+        // task title is required attribute
         if task.title.is_none() {
 
             println!("Missing task title (i.e. `task: <title>`) in task block found {}",
@@ -2557,11 +2567,20 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                             Directive::Include(path_to_file) => {
                                 parse_file(Some(tracked_path.clone()), path_to_file, journal);
                             },
-                            Directive::ShouldNotContainCompletedTasks(result) => {
-                                directive_switch.require_no_completed_tasks = Some(result);
-                            }
-                            Directive::RequiredProjectPrefix(result) => {
-                                directive_switch.required_project_prefix = Some(result);
+                            Directive::DefaultStatus(result) => {
+                                directive_switch.default_status = Some(result);
+                            },
+                            Directive::RequireStatus(result) => {
+                                directive_switch.require_status = Some(result);
+                            },
+                            Directive::RequireProjectPrefix(result) => {
+                                directive_switch.require_project_prefix = Some(result);
+                            },
+                            Directive::RequireProject(result) => {
+                                directive_switch.require_project = Some(result);
+                            },
+                            Directive::ProjectBase(result) => {
+                                directive_switch.project_base = Some(result);
                             }
                         };
 
@@ -3266,6 +3285,7 @@ fn task_id(input: Input<u8>) -> U8Result<TaskBlock> {
 
 /* directives */
 
+#[derive(Debug)]
 enum StatusDirective {
     Require(bool),
     Status(Status)
@@ -3286,9 +3306,6 @@ enum StatusDirective {
 
 // state for directives that are applied locally to files
 struct LocalDirectiveSwitches {
-
-    // TODO: deprecate
-    require_no_completed_tasks: Option<bool>,
 
     /* default:... directives */
 
@@ -3427,23 +3444,29 @@ enum Directive {
 
     /* project:... directives */
 
-    ProjectBase(ProjectPath),
-
-    // TODO: deprecated; remove
-    // ShouldNotContainCompletedTasks(bool),
-    // RequiredProjectPrefix(Vec<String>)
+    ProjectBase(ProjectPath)
 }
 
 fn directives(input: Input<u8>) -> U8Result<LineToken> {
 
     parse!{input;
 
-        let line: Directive = directive_include() <|>
-            directive_not_contain_done_tasks() <|>
-            directive_required_project_prefix();
+        let directive: Directive = directive_include() <|>
+
+            /* default:... directives */
+            directive_default_status() <|>
+
+            /* require:... directives */
+
+            directive_require_status() <|>
+            directive_require_project_prefix() <|>
+            directive_require_project() <|>
+
+            /* project:... directives */
+            directive_project_base();
 
         ret {
-            LineToken::Directive(line)
+            LineToken::Directive(directive)
         }
     }
 }
@@ -3466,42 +3489,106 @@ fn directive_include(input: Input<u8>) -> U8Result<Directive> {
     }
 }
 
-fn directive_not_contain_done_tasks(input: Input<u8>) -> U8Result<Directive> {
+fn directive_default_status(input: Input<u8>) -> U8Result<Directive> {
 
     parse!{input;
 
-        string_ignore_case("file_no_done_tasks".as_bytes()) <|>
-        string_ignore_case("require no done tasks".as_bytes()) <|>
-        string_ignore_case("require no completed tasks".as_bytes()) <|>
-        string_ignore_case("require no finished tasks".as_bytes());
+        string_ignore_case("default".as_bytes());
+        token(b':');
+        string_ignore_case("status".as_bytes());
         token(b':');
 
         skip_many(space_or_tab);
 
-        let input = bool_option_parser();
+        let status = parse_status();
 
         let _nothing: Vec<()> = many_till(space_or_tab, terminating);
 
-        ret Directive::ShouldNotContainCompletedTasks(input)
+        ret Directive::DefaultStatus(status)
     }
 }
 
-fn directive_required_project_prefix(input: Input<u8>) -> U8Result<Directive> {
+fn directive_require_status(input: Input<u8>) -> U8Result<Directive> {
 
     parse!{input;
 
-        string_ignore_case("required project prefix".as_bytes()) <|>
-        string_ignore_case("require project prefix".as_bytes()) <|>
-        string_ignore_case("require_project_prefix".as_bytes()) <|>
-        string_ignore_case("required_project_prefix".as_bytes());
+        string_ignore_case("require".as_bytes());
+        token(b':');
+        string_ignore_case("status".as_bytes());
         token(b':');
 
-        look_ahead(non_empty_line);
+        skip_many(space_or_tab);
 
-        let list = string_list(b'/');
+        let require_status = or(
+            |input| parse!{input;
+                let status = parse_status();
 
+                ret StatusDirective::Status(status)
+            },
+            |input| parse!{input;
 
-        ret Directive::RequiredProjectPrefix(list)
+                let require = bool_option_parser();
+
+                ret StatusDirective::Require(require)
+            },
+        );
+
+        let _nothing: Vec<()> = many_till(space_or_tab, terminating);
+
+        ret Directive::RequireStatus(require_status)
+    }
+}
+
+fn directive_require_project_prefix(input: Input<u8>) -> U8Result<Directive> {
+
+    parse!{input;
+
+        string_ignore_case("require".as_bytes());
+        token(b':');
+        string_ignore_case("project".as_bytes());
+        token(b':');
+        string_ignore_case("prefix".as_bytes());
+        token(b':');
+
+        skip_many(space_or_tab);
+
+        let project_prefix = string_list(b'/');
+
+        ret Directive::RequireProjectPrefix(project_prefix)
+    }
+}
+
+fn directive_require_project(input: Input<u8>) -> U8Result<Directive> {
+
+    parse!{input;
+
+        string_ignore_case("require".as_bytes());
+        token(b':');
+        string_ignore_case("project".as_bytes());
+        token(b':');
+
+        skip_many(space_or_tab);
+
+        let result = bool_option_parser();
+
+        ret Directive::RequireProject(result)
+    }
+}
+
+fn directive_project_base(input: Input<u8>) -> U8Result<Directive> {
+
+    parse!{input;
+
+        string_ignore_case("project".as_bytes());
+        token(b':');
+        string_ignore_case("base".as_bytes());
+        token(b':');
+
+        skip_many(space_or_tab);
+
+        let project_base = string_list(b'/');
+
+        ret Directive::ProjectBase(project_base)
     }
 }
 
@@ -3556,6 +3643,8 @@ fn parse_line(i: Input<u8>) -> U8Result<Line> {
 }
 
 /* delimited parser */
+
+// TODO: clean this up and implement. this isn't high-priority.
 
 // Original
 // E --> T {, T}
