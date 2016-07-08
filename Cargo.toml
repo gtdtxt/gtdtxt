@@ -3,6 +3,12 @@ name = "gtdtxt"
 version = "0.11.2"
 authors = ["Alberto Leal <mailforalberto@gmail.com>"]
 
+# src: http://stackoverflow.com/a/26946705/412627
+
+[lib]
+name = "gtdtxt"
+path = "src/lib.rs"
+
 [[bin]]
 doc = false
 name = "gtdtxt"
