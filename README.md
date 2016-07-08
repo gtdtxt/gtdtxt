@@ -129,6 +129,91 @@ Create an empty text file. Example: `todo.gtd`
 *TBA*
 
 
+## Directives
+
+Directives are flags/options that are applied to tasks, or apply an operation (e.g. including tasks from a file). 
+Some directives are sometimes useful such as enforcing checks on tasks, or injecting default attribute values on tasks.
+
+### `include` directive
+
+Include tasks from file indicated by the given path. 
+
+Paths may be absolute or relative; and this convention depends on the operating system. 
+If the given path is relative, then it is relative to the file's directory of which this directive is contained in.
+
+**Usage:**
+
+`include: path/to/file.gtd`
+
+
+### `default` directives
+
+`default` directives apply default values to tasks appearing after those directives. Attribute values in tasks are not *overwritten*.
+These directives are only applied to tasks that appear in the **same file**.
+
+#### `default:status`
+
+Apply default `status` attribute value to tasks appearing after this directive.
+Value is only applied if those tasks do not have explicit `status` attribute.
+
+**Usage:**
+
+`default:status: incubate`
+
+* If value is any one of the `Status` values, then this directive adds `status` attribute with the same value to any tasks that does not have an explicit `status` attribute. 
+
+**Values:**
+
+- **Status:** 
+    - **Done:** done, complete, finished, finish, fin
+    - **Not Done:** not done, active, progress, in progress, in-progress, pending, is active
+    - **Incubate:** incubate, hide, hidden, later, someday, inactive, not active
+
+### `require` directives
+
+`require` directives enforce attribute values to tasks appearing after those directives. It is an error if any of those tasks are missing the required attribute, or have the incorrect attribute value.
+
+#### `require:status`
+
+Enforce `status` attribute value requirement to tasks appearing after this directive.
+
+**Usage:**
+
+`require:status: incubate`
+
+
+* If value is one of `True` values, then any tasks appearing after this `require:status` directive shall be required to have an **explicit** `status` attribute.
+
+* If value is one of `False` values, then this directive has no effect (e.g. no-op).
+
+* If value is any one of the `Status` values, then this directive enforces any tasks appearing after this directive to have the same/similar `status` value.
+
+**Values:**
+
+- **Boolean:** 
+    - **True:** yes, y, true
+    - **False:** no, n, false
+- **Status:** 
+    - **Done:** done, complete, finished, finish, fin
+    - **Not Done:** not done, active, progress, in progress, in-progress, pending, is active
+    - **Incubate:** incubate, hide, hidden, later, someday, inactive, not active
+
+#### `require:project:prefix:`
+
+*TBA*
+
+#### `require:project:`
+
+*TBA*
+
+### `inject` directives
+
+*TBA*
+
+#### `inject:project:base:`
+
+*TBA*
+
 ## Issues, Questions, Comments, etc?
 
 Feel free to open an issue within this GitHub repository: https://github.com/gtdtxt/gtdtxt/issues
