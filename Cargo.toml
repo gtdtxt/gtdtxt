@@ -37,4 +37,7 @@ features = [ "suggestions", "color" ]
 version = "2"
 
 [dependencies]
-clippy = "*"
+clippy = {version = "*", optional = true}
+
+[features]
+default = []
