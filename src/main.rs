@@ -64,6 +64,13 @@ fn main() {
         .about("Getting Things Done (GTD) command-line application that parses human-readable to-do list text files.")
         .author("Alberto Leal <mailforalberto@gmail.com> (github.com/dashed)")
         .arg(
+            Arg::with_name("show-line-num-with-file-location")
+            .help("Show line number location of task with file location path.{n}\
+                Example: /path/to/file:line_number{n}")
+            .long("show-line-num-with-file-location")
+            .required(false)
+        )
+        .arg(
             Arg::with_name("hide-headers")
             .help("Hide headers. Shown by default.")
             .short("u")
@@ -522,6 +529,7 @@ fn main() {
 
     let show_headers: bool = !cmd_matches.is_present("hide-headers");
 
+    journal.show_line_num_with_file_location = cmd_matches.is_present("show-line-num-with-file-location");
     journal.sort_overdue_by_priority = cmd_matches.is_present("sort-overdue-by-priority");
     journal.hide_flagged = cmd_matches.is_present("hide-flagged");
     journal.show_only_flagged = cmd_matches.is_present("show-only-flagged");
@@ -1178,10 +1186,19 @@ fn _print_task(journal: &GTD, task: &Task, require_title: bool) {
                 }
             };
 
-            println!("{:>11} {}",
-                "File:".bold().blue(),
-                path
-            );
+            if journal.show_line_num_with_file_location {
+                println!("{:>11} {}:{}",
+                    "File:".bold().blue(),
+                    path,
+                    task.task_block_range_start
+                );
+            } else {
+                println!("{:>11} {}",
+                    "File:".bold().blue(),
+                    path
+                );
+            }
+
         }
     };
 
@@ -1426,6 +1443,7 @@ struct GTD {
     hide_incomplete: bool,
     project_only_filter: Tree,
     project_whitelist: Tree,
+    show_line_num_with_file_location: bool,
     sort_overdue_by_priority: bool,
     filter_by_only_tags: bool,
     filter_by_only_contexts: bool,
@@ -1520,6 +1538,7 @@ impl GTD {
             hide_incomplete: false,
             project_only_filter: HashMap::new(),
             project_whitelist: HashMap::new(),
+            show_line_num_with_file_location: false,
             sort_overdue_by_priority: false,
             filter_by_only_tags: false,
             filter_by_only_contexts: false,
