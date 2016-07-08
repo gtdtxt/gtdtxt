@@ -250,7 +250,7 @@ Require tasks appearing after this directive to **not have** this `status` attri
 
 *TBA*
 
-#### `require:project:prefix:`
+#### `require:project:prefix`
 
 *TBA*
 
@@ -262,7 +262,15 @@ Require tasks appearing after this directive to **not have** this `status` attri
 
 *TBA*
 
-#### `inject:project:base:`
+#### `inject:project:prefix`
+
+*TBA*
+
+### `ensure` directives
+
+*TBA*
+
+#### `ensure:project:prefix`
 
 *TBA*
 

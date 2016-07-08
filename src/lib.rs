@@ -2580,8 +2580,12 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                             Directive::RequireProject(result) => {
                                 directive_switch.require_project = Some(LineLocation(tracked_path.clone(), num_of_lines_parsed, result));
                             },
-                            Directive::InjectProjectBase(result) => {
-                                directive_switch.inject_project_base =
+                            Directive::InjectProjectPrefix(result) => {
+                                directive_switch.inject_project_prefix =
+                                    Some(LineLocation(tracked_path.clone(), num_of_lines_parsed, result));
+                            },
+                            Directive::EnsureProjectPrefix(result) => {
+                                directive_switch.ensure_project_prefix =
                                     Some(LineLocation(tracked_path.clone(), num_of_lines_parsed, result));
                             }
                         };
@@ -3327,7 +3331,10 @@ struct LocalDirectiveSwitches {
     // inject:project:base: /initial/path/to/project
     //
     // This injects project path as suffix.
-    inject_project_base: Option<LineLocation<ProjectPath>>
+    inject_project_prefix: Option<LineLocation<ProjectPath>>,
+
+    /* ensure:... directives */
+    ensure_project_prefix: Option<LineLocation<ProjectPath>>,
 }
 
 impl LocalDirectiveSwitches {
@@ -3336,20 +3343,27 @@ impl LocalDirectiveSwitches {
 
         LocalDirectiveSwitches {
 
-            /* default:... directive */
+            /* default:... directives */
 
             default_status: None,
 
-            /* require:... directive */
+            /* ensure:... directives */
+
+            /* require:... directives */
 
             require_status: None,
             require_exclude_status: None,
             require_project_prefix: None,
             require_project: None,
 
-            /* inject:... directive */
+            /* inject:... directives */
 
-            inject_project_base: None
+            inject_project_prefix: None,
+
+            /* ensure:... directives */
+
+            ensure_project_prefix: None,
+
         }
     }
 
@@ -3367,19 +3381,49 @@ impl LocalDirectiveSwitches {
         }
 
         // inject:base
-        if let Some(ref project_base) = self.inject_project_base {
+        if let Some(ref project_prefix) = self.inject_project_prefix {
 
-            let project_base: &ProjectPath = project_base.as_ref().unwrap();
+            let project_prefix: &ProjectPath = project_prefix.as_ref().unwrap();
 
             task.project = if task.project.is_some() {
-                let mut path = project_base.clone();
+                let mut path = project_prefix.clone();
                 path.extend_from_slice(task.project.as_ref().unwrap());
                 Some(path)
             } else {
-                Some(project_base.clone())
+                Some(project_prefix.clone())
             };
         }
 
+        // ensure:project:prefix
+        if let Some(ref project_prefix) = self.ensure_project_prefix {
+
+            let required_project_prefix = project_prefix.as_ref().unwrap();
+
+            let has_required_project_prefix: bool = match task.project {
+                None => false,
+                Some(ref project_path) => {
+
+                    // ensure task.project has project_path as prefix
+
+                    if project_path.len() < required_project_prefix.len() {
+                        false
+                    } else {
+                        project_path.starts_with(required_project_prefix)
+                    }
+                }
+            };
+
+            if !has_required_project_prefix {
+                task.project = if task.project.is_some() {
+                    let mut path = required_project_prefix.clone();
+                    path.extend_from_slice(task.project.as_ref().unwrap());
+                    Some(path)
+                } else {
+                    Some(required_project_prefix.clone())
+                };
+            }
+
+        }
     }
 
     fn pass_validation(&self, task: &Task, journal: &GTD) -> bool {
@@ -3462,20 +3506,7 @@ impl LocalDirectiveSwitches {
                     if project_path.len() < required_project_prefix.len() {
                         false
                     } else {
-
-                        let mut matches = true;
-                        let mut idx = required_project_prefix.len();
-
-                        while idx > 0 {
-                            idx -= 1;
-
-                            if required_project_prefix[idx] != project_path[idx] {
-                                matches = false;
-                                break;
-                            }
-                        }
-
-                        matches
+                        project_path.starts_with(required_project_prefix)
                     }
                 }
             };
@@ -3530,7 +3561,12 @@ enum Directive {
 
     /* inject:... directives */
 
-    InjectProjectBase(ProjectPath)
+    InjectProjectPrefix(ProjectPath),
+
+    /* ensure:... directives */
+
+    EnsureProjectPrefix(ProjectPath),
+
 }
 
 fn directives(input: Input<u8>) -> U8Result<LineToken> {
@@ -3552,7 +3588,10 @@ fn directives(input: Input<u8>) -> U8Result<LineToken> {
             directive_require_project() <|>
 
             /* inject:... directives */
-            directive_inject_project_base();
+            directive_inject_project_prefix() <|>
+
+            /* ensure:... directives */
+            directive_ensure_project_prefix();
 
         ret {
             LineToken::Directive(directive)
@@ -3685,7 +3724,7 @@ fn directive_require_project(input: Input<u8>) -> U8Result<Directive> {
     }
 }
 
-fn directive_inject_project_base(input: Input<u8>) -> U8Result<Directive> {
+fn directive_inject_project_prefix(input: Input<u8>) -> U8Result<Directive> {
 
     parse!{input;
 
@@ -3693,14 +3732,33 @@ fn directive_inject_project_base(input: Input<u8>) -> U8Result<Directive> {
         token(b':');
         string_ignore_case("project".as_bytes());
         token(b':');
-        string_ignore_case("base".as_bytes());
+        string_ignore_case("prefix".as_bytes());
         token(b':');
 
         skip_many(space_or_tab);
 
         let project_base = string_list(b'/');
 
-        ret Directive::InjectProjectBase(project_base)
+        ret Directive::InjectProjectPrefix(project_base)
+    }
+}
+
+fn directive_ensure_project_prefix(input: Input<u8>) -> U8Result<Directive> {
+
+    parse!{input;
+
+        string_ignore_case("ensure".as_bytes());
+        token(b':');
+        string_ignore_case("project".as_bytes());
+        token(b':');
+        string_ignore_case("prefix".as_bytes());
+        token(b':');
+
+        skip_many(space_or_tab);
+
+        let project_base = string_list(b'/');
+
+        ret Directive::EnsureProjectPrefix(project_base)
     }
 }
 
