@@ -2846,7 +2846,8 @@ fn task_title(input: Input<u8>) -> U8Result<TaskBlock> {
         string_ignore_case("task".as_bytes()) <|>
         string_ignore_case("todo".as_bytes()) <|>
         string_ignore_case("action".as_bytes()) <|>
-        string_ignore_case("item".as_bytes());
+        string_ignore_case("item".as_bytes()) <|>
+        string_ignore_case("title".as_bytes());
 
         token(b':');
 
