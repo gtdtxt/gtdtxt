@@ -55,7 +55,7 @@ use chomp::ascii::{is_whitespace, decimal, digit};
 #[allow(cyclomatic_complexity)]
 pub fn main() {
 
-    let version: &str = &format!("v{} (semver.org)", version!());
+    let version: &str = &format!("v{} (semver.org 2.0)", version!());
 
     let cmd_matches = App::new("gtdtxt")
         .setting(AppSettings::ArgRequiredElseHelp)
