@@ -1035,17 +1035,7 @@ fn _print_task(journal: &GTD, task: &Task, require_title: bool) {
     match task.status {
         None => {},
         Some(ref status) => {
-            let status_string = match *status {
-                Status::Done => {
-                    "Done".green()
-                },
-                Status::NotDone => {
-                    "Not Done".red().bold()
-                },
-                Status::Incubate => {
-                    "Incubate".purple()
-                }
-            };
+            let status_string = status.string();
             println!("{:>11} {}", "Status:".bold().blue(), status_string);
         }
     }
@@ -1319,6 +1309,16 @@ enum Status {
     Done,
     Incubate,
     NotDone
+}
+
+impl Status {
+    fn string(&self) -> String {
+        match *self {
+            Status::Done => "Done".to_owned(),
+            Status::Incubate => "Incubate".to_owned(),
+            Status::NotDone => "Not Done".to_owned()
+        }
+    }
 }
 
 #[derive(Debug)]
