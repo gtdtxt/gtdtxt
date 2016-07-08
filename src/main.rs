@@ -1,5 +1,12 @@
-#![recursion_limit="100"]
+#![cfg_attr(feature="clippy", feature(plugin))]
+#![cfg_attr(feature="clippy", plugin(clippy))]
+#![allow(needless_return, absurd_extreme_comparisons, redundant_closure, len_zero)]
+
 // Above is used for chomp macros
+#![recursion_limit="100"]
+
+// Disabled for when clippy feature is not enabled
+#![allow(unknown_lints)]
 
 #[macro_use]
 extern crate version;
@@ -45,7 +52,7 @@ use chomp::combinators::{or, many_till, many, many1, skip_many, skip_many1, look
 use chomp::ascii::{is_whitespace, decimal, digit};
 // use chomp::*;
 
-
+#[allow(cyclomatic_complexity)]
 fn main() {
 
     let version: &str = &format!("v{} (semver.org)", version!());
@@ -586,7 +593,7 @@ fn main() {
 
             let path = match Path::new(&path).strip_prefix(&journal.base_root) {
                 Err(_) => {
-                    format!("{}", path)
+                    path.to_owned()
                 },
                 Ok(path) => {
                     format!("./{}", path.display())
@@ -732,7 +739,7 @@ fn main() {
     // display tasks that are overdue
     let mut header_display: bool = show_headers;
     num_overdue = count_tasks(&journal.overdue);
-    for (_, bucket) in journal.overdue.iter() {
+    for bucket in journal.overdue.values() {
 
         if bucket.len() <= 0 {
             continue;
@@ -752,7 +759,7 @@ fn main() {
                 println!("");
             }
 
-            num_displayed = num_displayed + print_vector_of_tasks(&journal, bucket);
+            num_displayed += print_vector_of_tasks(&journal, bucket);
 
             if !print_line && num_displayed > 0 {
                 print_line = true;
@@ -764,7 +771,7 @@ fn main() {
     // incubated tasks are not included
     let mut header_display: bool = show_headers;
     num_inbox = count_tasks(&journal.inbox);
-    for (_, inbox) in journal.inbox.iter() {
+    for inbox in journal.inbox.values() {
 
         if inbox.len() <= 0 {
             continue;
@@ -782,7 +789,7 @@ fn main() {
             println!("");
         }
 
-        num_displayed = num_displayed + print_vector_of_tasks(&journal, inbox);
+        num_displayed += print_vector_of_tasks(&journal, inbox);
 
         if !print_line && num_displayed > 0 {
             print_line = true;
@@ -793,7 +800,7 @@ fn main() {
     // display deferred tasks ordered by priority
     let mut header_display: bool = show_headers;
     num_deferred = count_tasks(&journal.deferred);
-    for (_, deferred) in journal.deferred.iter() {
+    for deferred in journal.deferred.values() {
 
         if deferred.len() <= 0 {
             continue;
@@ -813,7 +820,7 @@ fn main() {
                 println!("");
             }
 
-            num_displayed = num_displayed + print_vector_of_tasks(&journal, deferred);
+            num_displayed += print_vector_of_tasks(&journal, deferred);
 
             if !print_line && num_displayed > 0 {
                 print_line = true;
@@ -827,7 +834,7 @@ fn main() {
     // display completed tasks
     let mut header_display: bool = show_headers;
     num_done = count_tasks(&journal.done);
-    for (_, done) in journal.done.iter() {
+    for done in journal.done.values() {
 
         if done.len() <= 0 {
             continue;
@@ -847,7 +854,7 @@ fn main() {
                 println!("");
             }
 
-            num_displayed = num_displayed + print_vector_of_tasks(&journal, done);
+            num_displayed += print_vector_of_tasks(&journal, done);
 
             if !print_line && num_displayed > 0 {
                 print_line = true;
@@ -870,14 +877,14 @@ fn main() {
 
         print!("{:>11} {}",
             format!("{} {}", days_ago, "days ago").purple(),
-            format!("|").purple()
+            "|".to_owned().purple()
         );
 
         if days_ago >= 7 {
             break;
         }
 
-        days_ago = days_ago + 1;
+        days_ago += 1;
 
     }
 
@@ -895,14 +902,14 @@ fn main() {
 
         print!("{:>11} {}",
             format!("{}", items_num).bold().purple(),
-            format!("|").purple()
+            "|".to_owned().purple()
         );
 
         if days_ago >= 7 {
             break;
         }
 
-        days_ago = days_ago + 1;
+        days_ago += 1;
 
     }
 
@@ -953,7 +960,7 @@ fn main() {
 
 /* printers */
 
-fn print_vector_of_tasks(journal: &GTD, inbox: &Vec<u64>) -> u64 {
+fn print_vector_of_tasks(journal: &GTD, inbox: &[u64]) -> u64 {
 
     let mut print_line: bool = false;
     let mut num_displayed = 0;
@@ -967,7 +974,7 @@ fn print_vector_of_tasks(journal: &GTD, inbox: &Vec<u64>) -> u64 {
         let task: &Task = journal.tasks.get(task_id).unwrap();
 
         print_task(journal, task);
-        num_displayed = num_displayed + 1;
+        num_displayed += 1;
 
         if !print_line {
             print_line = true;
@@ -982,6 +989,7 @@ fn print_task(journal: &GTD, task: &Task) {
     _print_task(journal, task, true);
 }
 
+#[allow(cyclomatic_complexity)]
 fn _print_task(journal: &GTD, task: &Task, require_title: bool) {
 
     if task.current {
@@ -1018,14 +1026,14 @@ fn _print_task(journal: &GTD, task: &Task, require_title: bool) {
     match task.status {
         None => {},
         Some(ref status) => {
-            let status_string = match status {
-                &Status::Done => {
+            let status_string = match *status {
+                Status::Done => {
                     "Done".green()
                 },
-                &Status::NotDone => {
+                Status::NotDone => {
                     "Not Done".red().bold()
                 },
-                &Status::Incubate => {
+                Status::Incubate => {
                     "Incubate".purple()
                 }
             };
@@ -1089,14 +1097,14 @@ fn _print_task(journal: &GTD, task: &Task, require_title: bool) {
         None => {},
         Some(ref defer) => {
 
-            match defer {
-                &Defer::Forever => {
+            match *defer {
+                Defer::Forever => {
                     println!("{:>11} {}",
                         "Defer till:".bold().blue(),
                         "Forever".bold().green()
                     );
                 },
-                &Defer::Until(defer_till) => {
+                Defer::Until(defer_till) => {
 
                     let rel_time = relative_time(defer_till.timestamp(), Local::now().naive_local().timestamp());
 
@@ -1161,7 +1169,9 @@ fn _print_task(journal: &GTD, task: &Task, require_title: bool) {
 
             let path = match Path::new(path).strip_prefix(&journal.base_root) {
                 Err(_) => {
-                    format!("{}", path)
+                    // TODO: remove
+                    // format!("{}", path)
+                    path.to_owned()
                 },
                 Ok(path) => {
                     format!("./{}", path.display())
@@ -1347,12 +1357,10 @@ impl Task {
             None => {},
             Some(ref status) => {
 
-                match status {
-                    &Status::Done => {
-                        return true;
-                    },
-                    _ => {}
+                if let Status::Done = *status {
+                    return true;
                 }
+
             }
         };
 
@@ -1382,7 +1390,7 @@ impl Task {
                 // let (key, _) = tree.iter().last().unwrap();
                 let (key, _) = tree.iter().next_back().unwrap();
 
-                return key.clone();
+                return *key;
             }
         }
     }
@@ -1563,7 +1571,7 @@ impl GTD {
         }
     }
 
-    fn have_only_tags(&mut self, tags: &Vec<String>) -> bool {
+    fn have_only_tags(&mut self, tags: &[String]) -> bool {
         for tag in tags {
             if self.only_tags.contains(tag) {
                 return true;
@@ -1573,7 +1581,7 @@ impl GTD {
         return false;
     }
 
-    fn have_include_tags(&mut self, tags: &Vec<String>) -> bool {
+    fn have_include_tags(&mut self, tags: &[String]) -> bool {
         for tag in tags {
             if self.include_tags.contains(tag) {
                 return true;
@@ -1595,7 +1603,7 @@ impl GTD {
         }
     }
 
-    fn have_only_contexts(&mut self, contexts: &Vec<String>) -> bool {
+    fn have_only_contexts(&mut self, contexts: &[String]) -> bool {
         for context in contexts {
             if self.only_contexts.contains(context) {
                 return true;
@@ -1605,7 +1613,7 @@ impl GTD {
         return false;
     }
 
-    fn have_include_contexts(&mut self, contexts: &Vec<String>) -> bool {
+    fn have_include_contexts(&mut self, contexts: &[String]) -> bool {
         for context in contexts {
             if self.include_contexts.contains(context) {
                 return true;
@@ -1631,11 +1639,11 @@ impl GTD {
         self.project_whitelist.len() > 0
     }
 
-    fn should_only_filter_project(&mut self, path: &Vec<String>) -> bool {
+    fn should_only_filter_project(&mut self, path: &[String]) -> bool {
         return path_satisfies_tree(&(self.project_only_filter), path);
     }
 
-    fn should_whitelist_project(&mut self, path: &Vec<String>) -> bool {
+    fn should_whitelist_project(&mut self, path: &[String]) -> bool {
         return path_satisfies_tree(&(self.project_whitelist), path);
     }
 
@@ -1739,8 +1747,8 @@ impl GTD {
                     },
                     Some(ref status) => {
 
-                        match status {
-                            &Status::NotDone => {
+                        match *status {
+                            Status::NotDone => {
                                 if self.is_overdue(&task) {
                                     let file_stats = self.file_stats.get_mut(source_file).unwrap();
                                     file_stats.add_overdue_task_id(new_id);
@@ -1753,7 +1761,7 @@ impl GTD {
                                     file_stats.add_deferred_task_id(new_id);
                                 }
                             },
-                            &Status::Incubate => {
+                            Status::Incubate => {
 
                                 if self.is_overdue(&task) {
                                     let file_stats = self.file_stats.get_mut(source_file).unwrap();
@@ -1767,7 +1775,7 @@ impl GTD {
                                 }
 
                             },
-                            &Status::Done => {
+                            Status::Done => {
                                 let file_stats = self.file_stats.get_mut(source_file).unwrap();
                                 file_stats.add_finished_task_id(new_id);
                             }
@@ -1829,9 +1837,10 @@ impl GTD {
 
     }
 
+    #[allow(cyclomatic_complexity)]
     fn add_task_default_hidden(&mut self, task: &Task, new_id: u64) {
 
-        if self.should_hide_task(&task) {
+        if self.should_hide_task(task) {
             return;
         }
 
@@ -1846,14 +1855,13 @@ impl GTD {
 
 
         if self.has_project_whitelist() {
-            match task.project {
-                Some(ref project_path) => {
-                    if self.should_whitelist_project(project_path) {
-                        shall_show = true;
-                    }
-                },
-                None => {}
-            };
+
+            if let Some(ref project_path) = task.project {
+                if self.should_whitelist_project(project_path) {
+                    shall_show = true;
+                }
+            }
+
         };
 
         if self.filter_by_include_tags {
@@ -1884,80 +1892,72 @@ impl GTD {
 
                 if self.hide_incomplete {
                     // hide task
-                } else if self.is_overdue(&task) {
+                } else if self.is_overdue(task) {
 
                     if self.show_overdue || shall_show {
-                        self.add_to_overdue(&task, new_id);
+                        self.add_to_overdue(task, new_id);
                     }
 
-                } else if !self.should_defer(&task) {
+                } else if !self.should_defer(task) {
 
                     if self.show_incomplete || shall_show {
                         // add task to inbox
                         self.add_to_inbox(task.priority, new_id);
                     }
 
-                } else {
-
-                    if self.show_deferred || shall_show {
-                        self.add_to_deferred(task.priority, new_id);
-                    }
-
+                } else if self.show_deferred || shall_show {
+                    self.add_to_deferred(task.priority, new_id);
                 }
 
             },
             Some(ref status) => {
 
-                match status {
-                    &Status::NotDone => {
+                match *status {
+                    Status::NotDone | Status::Incubate => {
 
                         if self.hide_incomplete {
                             // hide task
-                        } else if self.is_overdue(&task) {
+                        } else if self.is_overdue(task) {
 
                             if self.show_overdue || shall_show {
-                                self.add_to_overdue(&task, new_id);
+                                self.add_to_overdue(task, new_id);
                             }
 
-                        } else if !self.should_defer(&task) {
+                        } else if !self.should_defer(task) {
 
                             if self.show_incomplete || shall_show {
                                 // add task to inbox
                                 self.add_to_inbox(task.priority, new_id);
                             }
 
-                        } else {
-
-                            if self.show_deferred || shall_show {
-                                self.add_to_deferred(task.priority, new_id);
-                            }
+                        } else if self.show_deferred || shall_show {
+                            self.add_to_deferred(task.priority, new_id);
                         }
                     },
-                    &Status::Incubate => {
 
-                        if self.hide_incomplete {
-                            // hide task
-                        } else if self.is_overdue(&task) {
+                    // NOTE: merged with above arm
+                    // Status::Incubate => {
 
-                            if self.show_overdue || shall_show {
-                                self.add_to_overdue(&task, new_id);
-                            }
+                    //     if self.hide_incomplete {
+                    //         // hide task
+                    //     } else if self.is_overdue(task) {
 
-                        } else if !self.should_defer(&task) {
+                    //         if self.show_overdue || shall_show {
+                    //             self.add_to_overdue(task, new_id);
+                    //         }
 
-                            if self.show_incomplete || shall_show {
-                                // add task to inbox
-                                self.add_to_inbox(task.priority, new_id);
-                            }
+                    //     } else if !self.should_defer(task) {
 
-                        } else {
+                    //         if self.show_incomplete || shall_show {
+                    //             // add task to inbox
+                    //             self.add_to_inbox(task.priority, new_id);
+                    //         }
 
-                            if self.show_deferred || shall_show {
-                                self.add_to_deferred(task.priority, new_id);
-                            }
-                        }
-                    },
-                    &Status::Done => {
+                    //     } else if self.show_deferred || shall_show {
+                    //         self.add_to_deferred(task.priority, new_id);
+                    //     }
+                    // },
+                    Status::Done => {
 
                         if self.show_done || shall_show {
                             self.add_to_done(task.priority, new_id);
@@ -1972,7 +1972,7 @@ impl GTD {
 
     fn add_task_default(&mut self, task: &Task, new_id: u64) {
 
-        if self.should_hide_task(&task) {
+        if self.should_hide_task(task) {
             return;
         }
 
@@ -1982,9 +1982,9 @@ impl GTD {
 
                 if self.hide_incomplete {
                     // hide task
-                } else if self.is_overdue(&task) {
-                    self.add_to_overdue(&task, new_id);
-                } else if !self.should_defer(&task) {
+                } else if self.is_overdue(task) {
+                    self.add_to_overdue(task, new_id);
+                } else if !self.should_defer(task) {
                     // add task to inbox
                     self.add_to_inbox(task.priority, new_id);
                 } else {
@@ -1994,27 +1994,27 @@ impl GTD {
             },
             Some(ref status) => {
 
-                match status {
-                    &Status::NotDone => {
+                match *status {
+                    Status::NotDone => {
 
                         if self.hide_incomplete {
                             // hide task
-                        } else if self.is_overdue(&task) {
-                            self.add_to_overdue(&task, new_id);
-                        } else if !self.should_defer(&task) {
+                        } else if self.is_overdue(task) {
+                            self.add_to_overdue(task, new_id);
+                        } else if !self.should_defer(task) {
                             // add task to inbox
                             self.add_to_inbox(task.priority, new_id);
                         } else {
                             self.add_to_deferred(task.priority, new_id);
                         }
                     },
-                    &Status::Incubate => {
+                    Status::Incubate => {
 
                         if self.hide_incomplete {
                             // hide task
-                        } else if self.is_overdue(&task) {
-                            self.add_to_overdue(&task, new_id);
-                        } else if !self.should_defer(&task) {
+                        } else if self.is_overdue(task) {
+                            self.add_to_overdue(task, new_id);
+                        } else if !self.should_defer(task) {
 
                             if self.show_incubate {
 
@@ -2027,7 +2027,7 @@ impl GTD {
                             self.add_to_deferred(task.priority, new_id);
                         }
                     },
-                    &Status::Done => {
+                    Status::Done => {
                         self.add_to_done(task.priority, new_id);
                     }
                 }
@@ -2131,11 +2131,11 @@ impl GTD {
             },
             Some(ref defer) => {
 
-                match defer {
-                    &Defer::Forever => {
+                match *defer {
+                    Defer::Forever => {
                         return true;
                     },
-                    &Defer::Until(defer_till) => {
+                    Defer::Until(defer_till) => {
                         return defer_till.timestamp() > Local::now().naive_local().timestamp();
                     }
                 }
@@ -2163,9 +2163,7 @@ impl GTD {
 
         let days_ago = (diff / sec_per_day).floor() as i64;
 
-        if !self.pulse.contains_key(&days_ago) {
-            self.pulse.insert(days_ago, Vec::new());
-        }
+        self.pulse.entry(days_ago).or_insert_with(Vec::new);
 
         match self.pulse.get_mut(&days_ago) {
             None => unsafe { debug_unreachable!("journal.overdue missing expected bucket") },
@@ -2211,9 +2209,7 @@ impl GTD {
                     -rel_time
                 };
 
-                if !self.overdue.contains_key(&encoded_key) {
-                    self.overdue.insert(encoded_key, Vec::new());
-                }
+                self.overdue.entry(encoded_key).or_insert_with(Vec::new);
 
                 match self.overdue.get_mut(&encoded_key) {
                     None => unsafe { debug_unreachable!("journal.overdue missing expected bucket") },
@@ -2280,27 +2276,21 @@ impl GTD {
 
         let priority = GTD::encode_priority(priority);
 
-        if !self.inbox.contains_key(&priority) {
-            self.inbox.insert(priority, Vec::new());
-        }
+        self.inbox.entry(priority).or_insert_with(Vec::new);
     }
 
     fn ensure_priority_deferred(&mut self, priority: i64) {
 
         let priority = GTD::encode_priority(priority);
 
-        if !self.deferred.contains_key(&priority) {
-            self.deferred.insert(priority, Vec::new());
-        }
+        self.deferred.entry(priority).or_insert_with(Vec::new);
     }
 
     fn ensure_priority_done(&mut self, priority: i64) {
 
         let priority = GTD::encode_priority(priority);
 
-        if !self.done.contains_key(&priority) {
-            self.done.insert(priority, Vec::new());
-        }
+        self.done.entry(priority).or_insert_with(Vec::new);
     }
 
     // TODO: refactor
@@ -2317,6 +2307,8 @@ impl GTD {
 
 /* gtdtxt file parser */
 
+// for clippy
+#[allow(cyclomatic_complexity)]
 fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &mut GTD) {
 
     let path_to_file: &Path = Path::new(&path_to_file_str);
@@ -2355,7 +2347,7 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
         process::exit(1);
     }
 
-    let file: File  = File::open(path_to_file).ok().expect("Failed to open file");
+    let file: File  = File::open(path_to_file).expect("Failed to open file");
 
     // track this opened file to ensure we're not opening the same file twice
     journal.opened_files.insert(tracked_path.clone());
@@ -2523,12 +2515,17 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
 
                     LineToken::Directive(directive_line) => {
 
-                        match previous_state {
-                            ParseState::Task(task) => {
-                                journal.add_task(task, &directive_switch);
-                            },
-                            _ => {}
-                        };
+                        if let ParseState::Task(task) = previous_state {
+                            journal.add_task(task, &directive_switch);
+                        }
+
+                        // TODO: remove
+                        // match previous_state {
+                        //     ParseState::Task(task) => {
+                        //         journal.add_task(task, &directive_switch);
+                        //     },
+                        //     _ => {}
+                        // };
 
                         previous_state = ParseState::Directive;
 
@@ -2550,12 +2547,17 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
 
                         // println!("preblock");
 
-                        match previous_state {
-                            ParseState::Task(task) => {
-                                journal.add_task(task, &directive_switch);
-                            },
-                            _ => {}
-                        };
+                        if let ParseState::Task(task) = previous_state {
+                            journal.add_task(task, &directive_switch);
+                        }
+
+                        // TODO: remove
+                        // match previous_state {
+                        //     ParseState::Task(task) => {
+                        //         journal.add_task(task, &directive_switch);
+                        //     },
+                        //     _ => {}
+                        // };
 
                         previous_state = ParseState::PreBlock;
 
@@ -2565,12 +2567,17 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
 
                         // println!("TaskSeparator");
 
-                        match previous_state {
-                            ParseState::Task(task) => {
-                                journal.add_task(task, &directive_switch);
-                            },
-                            _ => {}
-                        };
+                        if let ParseState::Task(task) = previous_state {
+                            journal.add_task(task, &directive_switch);
+                        }
+
+                        // TODO: remove
+                        // match previous_state {
+                        //     ParseState::Task(task) => {
+                        //         journal.add_task(task, &directive_switch);
+                        //     },
+                        //     _ => {}
+                        // };
 
                         previous_state = ParseState::TaskSeparator;
                     }
@@ -2595,15 +2602,21 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                 //     _ => {}
                 // };
 
-                match previous_state {
-                    ParseState::Task(task) => {
-                        println!("Error occured when parsing a task.");
-                        println!("The following was captured:");
-                        print_task(journal, &task);
-                    },
-                    _ => {}
-                };
+                if let ParseState::Task(task) = previous_state {
+                    println!("Error occured when parsing a task.");
+                    println!("The following was captured:");
+                    print_task(journal, &task);
+                }
 
+                // TODO: remove
+                // match previous_state {
+                //     ParseState::Task(task) => {
+                //         println!("Error occured when parsing a task.");
+                //         println!("The following was captured:");
+                //         print_task(journal, &task);
+                //     },
+                //     _ => {}
+                // };
 
                 println!("Error parsing starting at line {} in file: {}", num_of_lines_parsed + 1, tracked_path);
                 process::exit(1);
@@ -2611,12 +2624,9 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
         }
     };
 
-    match previous_state {
-        ParseState::Task(task) => {
-            journal.add_task(task, &directive_switch);
-        },
-        _ => {}
-    };
+    if let ParseState::Task(task) = previous_state {
+        journal.add_task(task, &directive_switch);
+    }
 
     match journal.file_stats.get(&tracked_path) {
         None => unsafe { debug_unreachable!() },
@@ -2626,7 +2636,7 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                 None => {},
                 Some(require_no_completed_tasks) => {
 
-                    let ref tasks = file_stats.completed_tasks;
+                    let tasks = &file_stats.completed_tasks;
 
                     if tasks.len() > 0 && require_no_completed_tasks {
                         println!("Found {} completed tasks that are not supposed to be in file: {}",
@@ -2701,7 +2711,7 @@ fn line_token_parser(input: Input<u8>) -> U8Result<LineToken> {
 
             ret line
         },
-        |i| pre_block(i)
+        pre_block
     )
 
 }
@@ -2717,12 +2727,12 @@ fn pre_block(i: Input<u8>) -> U8Result<LineToken> {
          */
         let _line: Vec<()> = many_till(
             |i| or(i,
-                |i| whitespace(i),
-                |i| comments_block(i)
+                whitespace,
+                comments_block
             ),
             |i| or(i,
-                |i| comments_one_line(i),
-                |i| terminating(i)
+                comments_one_line,
+                terminating
             )
         );
 
@@ -2795,7 +2805,7 @@ fn task_current(input: Input<u8>) -> U8Result<TaskBlock> {
 
         string_ignore_case("current".as_bytes());
 
-        let _line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+        let _line: Vec<()> = many_till(space_or_tab, terminating);
 
         ret TaskBlock::Current
     }
@@ -2817,7 +2827,7 @@ fn task_title(input: Input<u8>) -> U8Result<TaskBlock> {
         let line = non_empty_line();
 
         ret {
-            let title: String = format!("{}", String::from_utf8_lossy(line.as_slice()).trim());
+            let title: String = String::from_utf8_lossy(line.as_slice()).trim().to_owned();
             TaskBlock::Title(title)
         }
     }
@@ -2835,7 +2845,7 @@ fn task_note(input: Input<u8>) -> U8Result<TaskBlock> {
 
         token(b':');
 
-        skip_many(|i| space_or_tab(i));
+        skip_many(space_or_tab);
 
         let line = or(
             |i| parse!{i;
@@ -2847,7 +2857,7 @@ fn task_note(input: Input<u8>) -> U8Result<TaskBlock> {
                 }
             },
             // NOTE: this must be parsed last
-            |i| non_empty_line(i)
+            non_empty_line
         );
 
         let other_lines: Vec<String> = many(
@@ -2871,7 +2881,7 @@ fn task_note(input: Input<u8>) -> U8Result<TaskBlock> {
                     // allow empty lines in note
 
                     let nothing: Vec<()> = many(|i| parse!{i;
-                        let _nothing: Vec<()> = many_till(|i| space_or_tab(i), |i| end_of_line(i));
+                        let _nothing: Vec<()> = many_till(space_or_tab, end_of_line);
                         ret ()
                     });
 
@@ -2896,18 +2906,20 @@ fn task_note(input: Input<u8>) -> U8Result<TaskBlock> {
         );
 
         ret {
-            let line: String = format!("{}", String::from_utf8_lossy(line.as_slice()).trim());
+            let line: String = String::from_utf8_lossy(line.as_slice()).trim().to_owned();
             let other_lines = other_lines.join("\n");
 
             let note = if other_lines.len() > 0 {
                 if line.len() > 0 {
                     format!("{}\n{}", line, other_lines)
                 } else {
-                    format!("{}", other_lines.trim())
+                    // format!("{}", other_lines.trim())
+                    other_lines.trim().to_owned()
                 }
 
             } else {
-                format!("{}", line)
+                // format!("{}", line)
+                line.to_owned()
             };
 
             TaskBlock::Note(note)
@@ -2923,14 +2935,14 @@ fn task_time(input: Input<u8>) -> U8Result<TaskBlock> {
         string_ignore_case("time".as_bytes());
         token(b':');
 
-        look_ahead(|i| non_empty_line(i));
+        look_ahead(non_empty_line);
 
-        skip_many(|i| space_or_tab(i));
+        skip_many(space_or_tab);
 
         let time: u64 = multiple_time_range();
 
 
-        let _nothing: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+        let _nothing: Vec<()> = many_till(space_or_tab, terminating);
 
         ret TaskBlock::Time(time)
     }
@@ -2950,13 +2962,13 @@ fn task_priority(input: Input<u8>) -> U8Result<TaskBlock> {
         string_ignore_case("priority".as_bytes());
         token(b':');
 
-        look_ahead(|i| non_empty_line(i));
+        look_ahead(non_empty_line);
 
-        skip_many(|i| space_or_tab(i));
+        skip_many(space_or_tab);
 
         let priority: i64 = parse_priority_number();
 
-        let _nothing: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+        let _nothing: Vec<()> = many_till(space_or_tab, terminating);
 
         ret TaskBlock::Priority(priority)
     }
@@ -2969,7 +2981,7 @@ fn task_project(input: Input<u8>) -> U8Result<TaskBlock> {
         string_ignore_case("project".as_bytes());
         token(b':');
 
-        look_ahead(|i| non_empty_line(i));
+        look_ahead(non_empty_line);
 
         let list = string_list(b'/');
 
@@ -2984,13 +2996,13 @@ fn task_flag(input: Input<u8>) -> U8Result<TaskBlock> {
         string_ignore_case("flag".as_bytes());
         token(b':');
 
-        look_ahead(|i| non_empty_line(i));
+        look_ahead(non_empty_line);
 
-        skip_many(|i| space_or_tab(i));
+        skip_many(space_or_tab);
 
         let input = bool_option_parser();
 
-        let _line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+        let _line: Vec<()> = many_till(space_or_tab, terminating);
 
         ret TaskBlock::Flag(input)
     }
@@ -3008,13 +3020,13 @@ fn task_created(input: Input<u8>) -> U8Result<TaskBlock> {
 
         token(b':');
 
-        look_ahead(|i| non_empty_line(i));
+        look_ahead(non_empty_line);
 
-        skip_many(|i| space_or_tab(i));
+        skip_many(space_or_tab);
 
         let created_at = parse_datetime(false);
 
-        let _line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+        let _line: Vec<()> = many_till(space_or_tab, terminating);
 
         ret TaskBlock::Created(created_at)
     }
@@ -3031,13 +3043,13 @@ fn task_done(input: Input<u8>) -> U8Result<TaskBlock> {
 
         token(b':');
 
-        look_ahead(|i| non_empty_line(i));
+        look_ahead(non_empty_line);
 
-        skip_many(|i| space_or_tab(i));
+        skip_many(space_or_tab);
 
         let done_at = parse_datetime(false);
 
-        let _line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+        let _line: Vec<()> = many_till(space_or_tab, terminating);
 
         ret TaskBlock::Done(done_at)
     }
@@ -3051,13 +3063,13 @@ fn task_chain(input: Input<u8>) -> U8Result<TaskBlock> {
 
         token(b':');
 
-        look_ahead(|i| non_empty_line(i));
+        look_ahead(non_empty_line);
 
-        skip_many(|i| space_or_tab(i));
+        skip_many(space_or_tab);
 
         let chain_at = parse_datetime(false);
 
-        let _line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+        let _line: Vec<()> = many_till(space_or_tab, terminating);
 
         ret TaskBlock::Chain(chain_at)
     }
@@ -3112,13 +3124,13 @@ fn task_status(input: Input<u8>) -> U8Result<TaskBlock> {
         string_ignore_case("status".as_bytes());
         token(b':');
 
-        look_ahead(|i| non_empty_line(i));
+        look_ahead(non_empty_line);
 
-        skip_many(|i| space_or_tab(i));
+        skip_many(space_or_tab);
 
         let status = parse_status();
 
-        let _line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+        let _line: Vec<()> = many_till(space_or_tab, terminating);
 
         ret TaskBlock::Status(status)
     }
@@ -3131,13 +3143,13 @@ fn task_due(input: Input<u8>) -> U8Result<TaskBlock> {
         string_ignore_case("due".as_bytes());
         token(b':');
 
-        look_ahead(|i| non_empty_line(i));
+        look_ahead(non_empty_line);
 
-        skip_many(|i| space_or_tab(i));
+        skip_many(space_or_tab);
 
         let due_at = parse_datetime(true);
 
-        let _line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+        let _line: Vec<()> = many_till(space_or_tab, terminating);
 
         ret TaskBlock::Due(due_at)
     }
@@ -3157,9 +3169,9 @@ fn task_defer(input: Input<u8>) -> U8Result<TaskBlock> {
 
         token(b':');
 
-        look_ahead(|i| non_empty_line(i));
+        look_ahead(non_empty_line);
 
-        skip_many(|i| space_or_tab(i));
+        skip_many(space_or_tab);
 
         let defer = or(
             |i| parse!{i;
@@ -3172,7 +3184,7 @@ fn task_defer(input: Input<u8>) -> U8Result<TaskBlock> {
             }
         );
 
-        let _line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+        let _line: Vec<()> = many_till(space_or_tab, terminating);
 
         ret TaskBlock::Defer(defer)
     }
@@ -3187,7 +3199,7 @@ fn task_contexts(input: Input<u8>) -> U8Result<TaskBlock> {
 
         token(b':');
 
-        look_ahead(|i| non_empty_line(i));
+        look_ahead(non_empty_line);
 
         let list = string_list(b',');
 
@@ -3204,7 +3216,7 @@ fn task_tags(input: Input<u8>) -> U8Result<TaskBlock> {
 
         token(b':');
 
-        look_ahead(|i| non_empty_line(i));
+        look_ahead(non_empty_line);
 
         let list = string_list(b',');
 
@@ -3222,7 +3234,7 @@ fn task_id(input: Input<u8>) -> U8Result<TaskBlock> {
         let line = non_empty_line();
 
         ret {
-            let id: String = format!("{}", String::from_utf8_lossy(line.as_slice()).trim());
+            let id: String = String::from_utf8_lossy(line.as_slice()).trim().to_owned();
             TaskBlock::ID(id)
         }
     }
@@ -3264,7 +3276,7 @@ impl DirectiveSwitches {
                             let mut idx = required_project_prefix.len();
 
                             while idx > 0 {
-                                idx = idx - 1;
+                                idx -= 1;
 
                                 if required_project_prefix[idx] != project_path[idx] {
                                     matches = false;
@@ -3282,7 +3294,7 @@ impl DirectiveSwitches {
                     println!("The following task's project path does not begin with required project path prefix: {}",
                         required_project_prefix.join(" / "));
 
-                    _print_task(journal, &task, false);
+                    _print_task(journal, task, false);
                     process::exit(1);
                 }
 
@@ -3321,12 +3333,12 @@ fn directive_include(input: Input<u8>) -> U8Result<Directive> {
         string_ignore_case("include".as_bytes());
         token(b':');
 
-        skip_many(|i| space_or_tab(i));
+        skip_many(space_or_tab);
 
         let line = non_empty_line();
 
         ret {
-            let path_to_file: String = format!("{}", String::from_utf8_lossy(line.as_slice()).trim());
+            let path_to_file: String = String::from_utf8_lossy(line.as_slice()).trim().to_owned();
             Directive::Include(path_to_file)
         }
     }
@@ -3342,11 +3354,11 @@ fn directive_not_contain_done_tasks(input: Input<u8>) -> U8Result<Directive> {
         string_ignore_case("require no finished tasks".as_bytes());
         token(b':');
 
-        skip_many(|i| space_or_tab(i));
+        skip_many(space_or_tab);
 
         let input = bool_option_parser();
 
-        let _nothing: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+        let _nothing: Vec<()> = many_till(space_or_tab, terminating);
 
         ret Directive::ShouldNotContainCompletedTasks(input)
     }
@@ -3362,7 +3374,7 @@ fn directive_required_project_prefix(input: Input<u8>) -> U8Result<Directive> {
         string_ignore_case("required_project_prefix".as_bytes());
         token(b':');
 
-        look_ahead(|i| non_empty_line(i));
+        look_ahead(non_empty_line);
 
         let list = string_list(b'/');
 
@@ -3413,9 +3425,9 @@ fn parse_line(i: Input<u8>) -> U8Result<Line> {
 
             // lines with just whitespace are probably not interesting
             // TODO: consider space_or_tab?
-            skip_many(|i| whitespace(i));
+            skip_many(whitespace);
 
-            let line: Vec<u8> = many_till(any, |i| terminating(i));
+            let line: Vec<u8> = many_till(any, terminating);
             ret Line::NonEmpty(line)
         }
     )
@@ -3450,7 +3462,7 @@ fn parse_task_separator<'a>(input: Input<'a, u8>, token: &[u8])
 
         match_four_tokens(token);
         skip_many(|i| string(i, token));
-        let _line: Vec<()> = many_till(|i| space_or_tab(i), |i| terminating(i));
+        let _line: Vec<()> = many_till(space_or_tab, terminating);
 
         ret ()
     }
@@ -3468,7 +3480,7 @@ fn comments_one_line(i: Input<u8>) -> U8Result<()> {
             )
         );
 
-        let _line: Vec<u8> = many_till(|i| any(i), |i| terminating(i));
+        let _line: Vec<u8> = many_till(any, terminating);
         ret ()
     }
 }
@@ -3477,7 +3489,7 @@ fn comments_block(i: Input<u8>) -> U8Result<()> {
     parse!{i;
         string("/*".as_bytes());
 
-        let _line: Vec<u8> = many_till(|i| any(i), |i| string(i, "*/".as_bytes()));
+        let _line: Vec<u8> = many_till(any, |i| string(i, "*/".as_bytes()));
         ret ()
     }
 }
@@ -3486,9 +3498,9 @@ fn comments_block(i: Input<u8>) -> U8Result<()> {
 
 fn parse_string_lists(input: Input<u8>, delim: u8) -> U8Result<Vec<String>> {
     parse!{input;
-        skip_many(|i| space_or_tab(i));
-        let result = string_list(b'/');
-        skip_many(|i| space_or_tab(i));
+        skip_many(space_or_tab);
+        let result = string_list(delim);
+        skip_many(space_or_tab);
         eof();
         ret result
     }
@@ -3550,7 +3562,7 @@ fn match_four_tokens<'a>(input: Input<'a, u8>, token: &[u8])
 
 fn whitespace(i: Input<u8>) -> U8Result<()> {
     parse!{i;
-        satisfy(|c| is_whitespace(c));
+        satisfy(is_whitespace);
         ret ()
     }
 }
@@ -3601,7 +3613,7 @@ fn terminating(i: Input<u8>) -> U8Result<()> {
             ret ()
         },
         // NOTE: eof should be matched last
-        |i| eof(i)
+        eof
     )
 }
 
@@ -3734,23 +3746,23 @@ impl PriorityFilterTree {
 
 fn priority_pretty_tree_art(filter_tree: &PriorityFilterTree) -> String {
 
-    match filter_tree {
-        &PriorityFilterTree::Leaf(ref filter) => {
+    match *filter_tree {
+        PriorityFilterTree::Leaf(ref filter) => {
 
             let &PriorityFilter(ref inequality, priority) = filter;
 
-            let placeholder = match inequality {
-                &Inequality::GreaterThan => format!("> {}", priority),
-                &Inequality::GreaterThanOrEqual => format!(">= {}", priority),
-                &Inequality::LessThan => format!("< {}", priority),
-                &Inequality::LessThanOrEqual => format!("<= {}", priority),
-                &Inequality::Equal => format!("== {}", priority)
+            let placeholder = match *inequality {
+                Inequality::GreaterThan => format!("> {}", priority),
+                Inequality::GreaterThanOrEqual => format!(">= {}", priority),
+                Inequality::LessThan => format!("< {}", priority),
+                Inequality::LessThanOrEqual => format!("<= {}", priority),
+                Inequality::Equal => format!("== {}", priority)
             };
 
             return placeholder;
 
         },
-        &PriorityFilterTree::Union(ref left_tree, ref right_tree) => {
+        PriorityFilterTree::Union(ref left_tree, ref right_tree) => {
 
             let left_tree = if left_tree.is_leaf() {
                 priority_pretty_tree_art(left_tree)
@@ -3766,7 +3778,7 @@ fn priority_pretty_tree_art(filter_tree: &PriorityFilterTree) -> String {
 
             return format!("{} or {}", left_tree, right_tree);
         },
-        &PriorityFilterTree::Intersection(ref left_tree, ref right_tree) => {
+        PriorityFilterTree::Intersection(ref left_tree, ref right_tree) => {
 
             let left_tree = if left_tree.is_leaf() {
                 priority_pretty_tree_art(left_tree)
@@ -3788,23 +3800,23 @@ fn priority_pretty_tree_art(filter_tree: &PriorityFilterTree) -> String {
 
 fn priority_satisfy_tree(filter_tree: &PriorityFilterTree, task_priority: Priority) -> bool {
 
-    match filter_tree {
-        &PriorityFilterTree::Leaf(ref filter) => {
+    match *filter_tree {
+        PriorityFilterTree::Leaf(ref filter) => {
 
             let &PriorityFilter(ref inequality, priority) = filter;
 
-            let result = match inequality {
-                &Inequality::GreaterThan => task_priority > priority,
-                &Inequality::GreaterThanOrEqual => task_priority >= priority,
-                &Inequality::LessThan => task_priority < priority,
-                &Inequality::LessThanOrEqual => task_priority <= priority,
-                &Inequality::Equal => task_priority == priority
+            let result = match *inequality {
+                Inequality::GreaterThan => task_priority > priority,
+                Inequality::GreaterThanOrEqual => task_priority >= priority,
+                Inequality::LessThan => task_priority < priority,
+                Inequality::LessThanOrEqual => task_priority <= priority,
+                Inequality::Equal => task_priority == priority
             };
 
             return result;
 
         },
-        &PriorityFilterTree::Union(ref left_tree, ref right_tree) => {
+        PriorityFilterTree::Union(ref left_tree, ref right_tree) => {
 
             if priority_satisfy_tree(left_tree, task_priority) {
                 return true;
@@ -3816,7 +3828,7 @@ fn priority_satisfy_tree(filter_tree: &PriorityFilterTree, task_priority: Priori
 
             return false;
         },
-        &PriorityFilterTree::Intersection(ref left_tree, ref right_tree) => {
+        PriorityFilterTree::Intersection(ref left_tree, ref right_tree) => {
 
             if !priority_satisfy_tree(left_tree, task_priority) {
                 return false;
@@ -3836,11 +3848,11 @@ fn parse_show_priority(input: Input<u8>) -> U8Result<PriorityFilterTree> {
 
     parse!{input;
 
-        skip_many(|i| space_or_tab(i));
+        skip_many(space_or_tab);
 
         let result = parse_priority_filter_tree();
 
-        skip_many(|i| space_or_tab(i));
+        skip_many(space_or_tab);
         eof();
 
         ret result
@@ -3878,7 +3890,7 @@ fn parse_priority_filter_tree(input: Input<u8>) -> U8Result<PriorityFilterTree> 
 
             let left_node = parse_priority_filter_tree_maybe_predicate_intersect();
 
-            skip_many(|i| space_or_tab(i));
+            skip_many(space_or_tab);
 
             let right_node = parse_priority_filter_tree_union(left_node);
             ret right_node
@@ -3900,11 +3912,11 @@ fn parse_priority_filter_tree_union(input: Input<u8>, left_node: PriorityFilterT
             string("|".as_bytes()) <|>
             string_ignore_case("or".as_bytes());
 
-            skip_many(|i| space_or_tab(i));
+            skip_many(space_or_tab);
 
             let right_node = parse_priority_filter_tree_maybe_predicate_intersect();
 
-            skip_many(|i| space_or_tab(i));
+            skip_many(space_or_tab);
 
             let tree = parse_priority_filter_tree_union({
                 let left_node = Box::new(left_node.clone());
@@ -3921,7 +3933,7 @@ fn parse_priority_filter_tree_union(input: Input<u8>, left_node: PriorityFilterT
             string("|".as_bytes()) <|>
             string_ignore_case("or".as_bytes());
 
-            skip_many(|i| space_or_tab(i));
+            skip_many(space_or_tab);
 
             let right_node = parse_priority_filter_tree_maybe_predicate_intersect();
 
@@ -3943,7 +3955,7 @@ fn parse_priority_filter_tree_maybe_predicate_intersect(input: Input<u8>)
 
             let left_node = parse_priority_filter_tree_predicate();
 
-            skip_many(|i| space_or_tab(i));
+            skip_many(space_or_tab);
 
             let right_node = parse_priority_filter_tree_intersect(left_node);
             ret right_node;
@@ -3967,11 +3979,11 @@ fn parse_priority_filter_tree_intersect(input: Input<u8>, left_node: PriorityFil
             string("&".as_bytes()) <|>
             string_ignore_case("and".as_bytes());
 
-            skip_many(|i| space_or_tab(i));
+            skip_many(space_or_tab);
 
             let right_node = parse_priority_filter_tree_predicate();
 
-            skip_many(|i| space_or_tab(i));
+            skip_many(space_or_tab);
 
             let tree = parse_priority_filter_tree_intersect({
                 let left_node = Box::new(left_node.clone());
@@ -3988,7 +4000,7 @@ fn parse_priority_filter_tree_intersect(input: Input<u8>, left_node: PriorityFil
             string("&".as_bytes()) <|>
             string_ignore_case("and".as_bytes());
 
-            skip_many(|i| space_or_tab(i));
+            skip_many(space_or_tab);
 
             let right_node = parse_priority_filter_tree_predicate();
 
@@ -4007,11 +4019,11 @@ fn parse_priority_filter_tree_predicate(input: Input<u8>) -> U8Result<PriorityFi
         |input| parse!{input;
 
             token(b'(');
-            skip_many(|i| space_or_tab(i));
+            skip_many(space_or_tab);
 
             let tree = parse_priority_filter_tree();
 
-            skip_many(|i| space_or_tab(i));
+            skip_many(space_or_tab);
             token(b')');
 
             ret tree
@@ -4034,7 +4046,7 @@ fn parse_priority_filter(input: Input<u8>) -> U8Result<PriorityFilter> {
 
             let operator = parse_inequality();
 
-            skip_many(|i| space_or_tab(i));
+            skip_many(space_or_tab);
 
             let priority = parse_priority_number();
 
@@ -4074,9 +4086,9 @@ fn __parse_inequality<'a>(input: Input<'a, u8>, needle: &str, output: Inequality
 
 fn parse_times_ranges(i: Input<u8>) -> U8Result<u64> {
     parse!{i;
-        skip_many(|i| space_or_tab(i));
+        skip_many(space_or_tab);
         let result: u64 = multiple_time_range();
-        skip_many(|i| space_or_tab(i));
+        skip_many(space_or_tab);
         eof();
         ret result
     }
@@ -4089,14 +4101,14 @@ fn multiple_time_range(i: Input<u8>) -> U8Result<u64> {
         let time: Vec<u64> = many1(
             |i| or(i,
                 |i| parse!{i;
-                    skip_many(|i| space_or_tab(i));
+                    skip_many(space_or_tab);
                     let range1: u64 = time_range();
 
                     space_or_tab();
-                    skip_many(|i| space_or_tab(i));
+                    skip_many(space_or_tab);
                     string_ignore_case("and".as_bytes());
                     space_or_tab();
-                    skip_many(|i| space_or_tab(i));
+                    skip_many(space_or_tab);
 
                     let range2: u64 = time_range();
 
@@ -4105,7 +4117,7 @@ fn multiple_time_range(i: Input<u8>) -> U8Result<u64> {
                     }
                 },
                 |i| parse!{i;
-                    skip_many(|i| space_or_tab(i));
+                    skip_many(space_or_tab);
                     let range = time_range();
                     ret range
                 }
@@ -4124,7 +4136,7 @@ fn time_range(i: Input<u8>) -> U8Result<u64> {
 
         let range: u64 = decimal();
 
-        skip_many(|i| space_or_tab(i));
+        skip_many(space_or_tab);
 
         let multiplier = time_range_unit_minutes() <|>
             time_range_unit_hours() <|>
@@ -4231,7 +4243,7 @@ fn parse_datetime(i: Input<u8>, end_of_day: bool) -> U8Result<NaiveDateTime> {
         |i| parse!{i;
 
             let time = parse_time();
-            skip_many1(|i| space_or_tab(i));
+            skip_many1(space_or_tab);
             let date = parse_date();
 
 
@@ -4245,7 +4257,7 @@ fn parse_datetime(i: Input<u8>, end_of_day: bool) -> U8Result<NaiveDateTime> {
 
 
                 let date = parse_date();
-                skip_many1(|i| space_or_tab(i));
+                skip_many1(space_or_tab);
                 let time = parse_time();
 
                 ret ParsedDateTime {
@@ -4297,20 +4309,20 @@ fn parse_date(i: Input<u8>) -> U8Result<ParsedDate> {
 
         let month = parse_months();
 
-        skip_many1(|i| space_or_tab(i));
+        skip_many1(space_or_tab);
 
         let day = parse_day();
 
         or(
             |i| parse!{i;
-                skip_many(|i| space_or_tab(i));
+                skip_many(space_or_tab);
                 token(b',');
-                skip_many(|i| space_or_tab(i));
+                skip_many(space_or_tab);
 
                 ret ()
             },
             |i| parse!{i;
-                skip_many1(|i| space_or_tab(i));
+                skip_many1(space_or_tab);
                 ret ()
             }
         );
@@ -4344,7 +4356,7 @@ fn simple_time(i: Input<u8>) -> U8Result<Time> {
 
     parse!{i;
         let hour = parse_12_hour();
-        skip_many(|i| space_or_tab(i));
+        skip_many(space_or_tab);
         let ampm: Meridiem = parse_am_pm();
 
         ret {
@@ -4360,7 +4372,7 @@ fn simple_time(i: Input<u8>) -> U8Result<Time> {
                 Meridiem::PM => {
                     if hour != 12 {
                         // 1 to 11
-                        hour = hour + 12;
+                        hour += 12;
                     }
                 }
             };
@@ -4380,7 +4392,7 @@ fn parse_12_hour_clock(i: Input<u8>) -> U8Result<Time> {
         let hour = parse_12_hour();
         token(b':');
         let minute = parse_minute();
-        skip_many(|i| space_or_tab(i));
+        skip_many(space_or_tab);
         let ampm: Meridiem = parse_am_pm();
 
         ret {
@@ -4396,7 +4408,7 @@ fn parse_12_hour_clock(i: Input<u8>) -> U8Result<Time> {
                 Meridiem::PM => {
                     if hour != 12 {
                         // 1 to 11
-                        hour = hour + 12;
+                        hour += 12;
                     }
                 }
             };
@@ -4437,7 +4449,7 @@ fn parse_24_hour_clock(i: Input<u8>) -> U8Result<Time> {
                 minute: minute
             }
         },
-        |i| military_time(i)
+        military_time
     )
 
 
@@ -4492,7 +4504,8 @@ fn military_time(i: Input<u8>) -> U8Result<Time> {
     )
     .bind(|i, above:Time| {
 
-        if 0 <= above.hour && above.hour <= 23 && 0 <= above.minute && above.minute <= 59  {
+        // if 0 <= above.hour && above.hour <= 23 && 0 <= above.minute && above.minute <= 59  {
+        if above.hour <= 23 && above.minute <= 59  {
             return i.ret(above);
         }
 
@@ -4506,7 +4519,8 @@ fn parse_24_hour(i: Input<u8>) -> U8Result<u32> {
     up_to_two_digits(i)
     .bind(|i, above:u32| {
 
-        if 0 <= above && above <= 23 {
+        // if 0 <= above && above <= 23 {
+        if above <= 23 {
             return i.ret(above);
         }
 
@@ -4536,7 +4550,8 @@ fn parse_minute(i: Input<u8>) -> U8Result<u32> {
     two_digits(i)
     .bind(|i, above:u32| {
 
-        if 0 <= above && above <= 59 {
+        // if 0 <= above && above <= 59 {
+        if above <= 59 {
             return i.ret(above);
         }
 
@@ -4753,7 +4768,8 @@ impl FileStats {
 
         let mut tags = Vec::new();
 
-        for tag in self.tags.iter() {
+        // for tag in self.tags.iter() {
+        for tag in &self.tags {
             tags.push(tag.clone());
         }
         return tags.join(", ");
@@ -4763,7 +4779,8 @@ impl FileStats {
 
         let mut contexts = Vec::new();
 
-        for context in self.contexts.iter() {
+        // for context in self.contexts.iter() {
+        for context in &self.contexts {
             contexts.push(context.clone());
         }
         return contexts.join(", ");
@@ -4859,7 +4876,7 @@ impl Timerange {
 
         // pluralize
         let unit = if elapsed <= 1f64 {
-            format!("{}", unit)
+            unit.to_owned()
         } else {
             format!("{}s", unit)
         };
@@ -4912,11 +4929,11 @@ fn traverse(path: &mut [String], tree: &mut Tree) {
                 let should_replace: bool = match tree.get_mut(first) {
                     None => unsafe { debug_unreachable!("add_project_filter: NodeType not found") },
                     Some(node_type) => {
-                        match node_type {
-                            &mut NodeType::Leaf => {
+                        match *node_type {
+                            NodeType::Leaf => {
                                 true
                             },
-                            &mut NodeType::Node(_) => {
+                            NodeType::Node(_) => {
                                 false
                             }
                         }
@@ -4938,7 +4955,7 @@ fn traverse(path: &mut [String], tree: &mut Tree) {
 }
 
 // For any leaf in the tree, test if its path (from root to leaf) is a subpath of path.
-fn path_satisfies_tree(tree: &Tree, path: &Vec<String>) -> bool {
+fn path_satisfies_tree(tree: &Tree, path: &[String]) -> bool {
 
     let mut current = tree;
 
@@ -4953,12 +4970,12 @@ fn path_satisfies_tree(tree: &Tree, path: &Vec<String>) -> bool {
                 return false;
             },
             Some(node_type) => {
-                match node_type {
-                    &NodeType::Leaf => {
+                match *node_type {
+                    NodeType::Leaf => {
                         // path is super path
                         return true;
                     },
-                    &NodeType::Node(ref tree) => {
+                    NodeType::Node(ref tree) => {
                         current = tree;
                     }
                 }
@@ -4984,12 +5001,14 @@ pub trait NumberingType {
     fn position(&self) -> Self::Position;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct LineNumber(u64);
 
 // Semantics: count number of newlines
 impl LineNumber {
-    pub fn new() -> Self { LineNumber(0) }
+    pub fn new() -> Self {
+        LineNumber::default()
+    }
 }
 
 impl NumberingType for LineNumber {
@@ -4997,7 +5016,7 @@ impl NumberingType for LineNumber {
     type Position = u64;
 
     fn update(&mut self, b: &[Self::Token]) {
-        self.0 = self.0 + b.iter().filter(|&&c| c == b'\n').count() as u64;
+        self.0 += b.iter().filter(|&&c| c == b'\n').count() as u64;
     }
 
     fn position(&self) -> Self::Position {
