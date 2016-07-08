@@ -126,8 +126,50 @@ brew install https://raw.githubusercontent.com/gtdtxt/gtdtxt/master/gtdtxt.rb
 
 Create an empty text file. Example: `todo.gtd`
 
+
+Specification
+=============
+
 *TBA*
 
+## Tasks
+
+A task is a block of attributes with nothing between them but attributes (e.g. no blank lines, lines of whitespace, comments, or horizontal rules).
+On the other hand, tasks are separated by anything other than attributes.
+
+### Task attributes
+
+Task attributes are key-value (or attribute-value) pairs. 
+The key and the value are separated by a colon, `:`, and they have this form: `attribute_name: value`.
+
+Tasks may have attributes that repeats (which may be useful). But in the case when the task can only have one value of an attribute type, then the last attribute that appears in the task block will be the final value. For example:
+
+```
+task: buy milk
+task: buy oranges
+```
+
+The above task will have the title 'buy oranges', since `task: buy oranges` appeared last in its task block.
+
+Task attribute names are **case-insensitive**.
+
+#### `task` attribute (required)
+
+The task name/title.
+
+**Example:**
+
+```
+task: buy milk
+```
+
+**Aliases:**
+
+- `title`, `todo`, `action`, `item`
+
+#### `status` attribute (optional)
+
+*TBA*
 
 ## Directives
 
@@ -214,7 +256,16 @@ Enforce `status` attribute value requirement to tasks appearing after this direc
 
 *TBA*
 
-## Issues, Questions, Comments, etc?
+## Comments
+
+*TBA*
+
+## Horizontal Rule
+
+*TBA*
+
+Issues, Questions, Comments, etc?
+=================================
 
 Feel free to open an issue within this GitHub repository: https://github.com/gtdtxt/gtdtxt/issues
 
