@@ -997,6 +997,7 @@ fn print_task(journal: &GTD, task: &Task) {
     _print_task(journal, task, true);
 }
 
+// this function outputs a given task with the option of validating the task title requirement
 #[allow(cyclomatic_complexity)]
 fn _print_task(journal: &GTD, task: &Task, require_title: bool) {
 
@@ -1298,14 +1299,20 @@ fn _print_task(journal: &GTD, task: &Task, require_title: bool) {
 
 /* data structures */
 
+// index project path filters
 #[derive(Debug)]
 enum NodeType {
     Node(Tree),
     Leaf
 }
-
-// index project filters
 type Tree = HashMap<String, NodeType>;
+
+// types
+type ProjectPath = Vec<String>;
+type Contexts = Vec<String>;
+type Tags = Vec<String>;
+type Priority = i64;
+type Time = u64;
 
 #[derive(Debug)]
 enum Status {
@@ -1323,7 +1330,8 @@ struct Task {
 
     /* props */
     current: bool,
-    title: Option<String>,
+    title: Option<String>, // required
+
     note: Option<String>,
     created_at: Option<NaiveDateTime>,
     done_at: Option<NaiveDateTime>,
@@ -1331,12 +1339,14 @@ struct Task {
     due_at: Option<NaiveDateTime>,
     defer: Option<Defer>,
     status: Option<Status>,
-    project: Option<Vec<String>>,
-    contexts: Option<Vec<String>>,
-    tags: Option<Vec<String>>,
-    priority: i64,
-    time: u64,
+    project: Option<ProjectPath>,
+    contexts: Option<Contexts>,
+    tags: Option<Tags>,
+    priority: Priority,
+    time: Time,
+    // TODO: rename to flagged
     flag: bool,
+
     source_file: Option<String>
 }
 
@@ -3791,9 +3801,6 @@ fn signed_decimal(input: Input<u8>) -> U8Result<i64> {
 }
 
 /* inequality parsers */
-
-// TODO: move this somewhere else
-type Priority = i64;
 
 #[derive(Debug, Clone)]
 enum Inequality {
