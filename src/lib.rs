@@ -1314,7 +1314,7 @@ type Tags = Vec<String>;
 type Priority = i64;
 type TimeLength = u64;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Status {
     Done,
     Incubate,
@@ -2418,13 +2418,14 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
 
     loop {
 
-        let mut n = Numbering::new(LineNumber::new(), line_token_parser);
+        let mut n = Numbering::new(LinesParsed::new(), line_token_parser);
         // If we could implement FnMut for Numbering then we would be good, but we need to wrap now:
         let m = |i| n.parse(i);
 
         match input.parse(m) {
             Ok((lines_parsed, line)) => {
 
+                // TODO: fix this... off by one hack fix :P
                 // amend behaviour of newline counting
                 let lines_parsed = if lines_parsed == 0 {
                     1
@@ -2432,6 +2433,7 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                     lines_parsed
                 };
 
+                // track the current line number
                 num_of_lines_parsed += lines_parsed;
 
                 match line {
@@ -2553,14 +2555,6 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                             journal.add_task(task, &directive_switch);
                         }
 
-                        // TODO: remove
-                        // match previous_state {
-                        //     ParseState::Task(task) => {
-                        //         journal.add_task(task, &directive_switch);
-                        //     },
-                        //     _ => {}
-                        // };
-
                         previous_state = ParseState::Directive;
 
                         match directive_line {
@@ -2568,19 +2562,21 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                                 parse_file(Some(tracked_path.clone()), path_to_file, journal);
                             },
                             Directive::DefaultStatus(result) => {
-                                directive_switch.default_status = Some(result);
+                                directive_switch.default_status = Some(LineLocation(tracked_path.clone(), num_of_lines_parsed, result));
                             },
                             Directive::RequireStatus(result) => {
-                                directive_switch.require_status = Some(result);
+                                directive_switch.require_status = Some(LineLocation(tracked_path.clone(), num_of_lines_parsed, result));
                             },
                             Directive::RequireProjectPrefix(result) => {
-                                directive_switch.require_project_prefix = Some(result);
+                                directive_switch.require_project_prefix =
+                                    Some(LineLocation(tracked_path.clone(), num_of_lines_parsed, result));
                             },
                             Directive::RequireProject(result) => {
-                                directive_switch.require_project = Some(result);
+                                directive_switch.require_project = Some(LineLocation(tracked_path.clone(), num_of_lines_parsed, result));
                             },
-                            Directive::ProjectBase(result) => {
-                                directive_switch.project_base = Some(result);
+                            Directive::InjectProjectBase(result) => {
+                                directive_switch.inject_project_base =
+                                    Some(LineLocation(tracked_path.clone(), num_of_lines_parsed, result));
                             }
                         };
 
@@ -2593,14 +2589,6 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                         if let ParseState::Task(task) = previous_state {
                             journal.add_task(task, &directive_switch);
                         }
-
-                        // TODO: remove
-                        // match previous_state {
-                        //     ParseState::Task(task) => {
-                        //         journal.add_task(task, &directive_switch);
-                        //     },
-                        //     _ => {}
-                        // };
 
                         previous_state = ParseState::PreBlock;
 
@@ -2648,61 +2636,56 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                 if let ParseState::Task(task) = previous_state {
                     println!("Error occured when parsing a task.");
                     println!("The following was captured:");
-                    print_task(journal, &task);
+                    _print_task(journal, &task, false);
                 }
 
-                // TODO: remove
-                // match previous_state {
-                //     ParseState::Task(task) => {
-                //         println!("Error occured when parsing a task.");
-                //         println!("The following was captured:");
-                //         print_task(journal, &task);
-                //     },
-                //     _ => {}
-                // };
-
-                println!("Error parsing starting at line {} in file: {}", num_of_lines_parsed + 1, tracked_path);
+                let line_number = num_of_lines_parsed + 1;
+                println!("{}:{} Error parsing at line {}", tracked_path, line_number, line_number);
+                // println!("Error parsing starting at line {} in file: {}", num_of_lines_parsed + 1, tracked_path);
                 process::exit(1);
             }
         }
     };
 
+    // Parsing is finished, 'flush' any buffered state.
+
     if let ParseState::Task(task) = previous_state {
         journal.add_task(task, &directive_switch);
     }
 
-    match journal.file_stats.get(&tracked_path) {
-        None => unsafe { debug_unreachable!() },
-        Some(file_stats) => {
+    // TODO: remove... moved to LocalDirectiveSwitches::pass_validation(...)
+    // match journal.file_stats.get(&tracked_path) {
+    //     None => unsafe { debug_unreachable!() },
+    //     Some(file_stats) => {
 
-            match directive_switch.require_no_completed_tasks {
-                None => {},
-                Some(require_no_completed_tasks) => {
+    //         match directive_switch.require_no_completed_tasks {
+    //             None => {},
+    //             Some(require_no_completed_tasks) => {
 
-                    let tasks = &file_stats.completed_tasks;
+    //                 let tasks = &file_stats.completed_tasks;
 
-                    if tasks.len() > 0 && require_no_completed_tasks {
-                        println!("Found {} completed tasks that are not supposed to be in file: {}",
-                            tasks.len(),
-                            tracked_path);
+    //                 if tasks.len() > 0 && require_no_completed_tasks {
+    //                     println!("Found {} completed tasks that are not supposed to be in file: {}",
+    //                         tasks.len(),
+    //                         tracked_path);
 
-                        let task: &Task = journal.tasks.get(tasks.first().unwrap()).unwrap();
+    //                     let task: &Task = journal.tasks.get(tasks.first().unwrap()).unwrap();
 
-                        println!("Found a completed task at lines: {} to {}",
-                            task.task_block_range_start,
-                            task.task_block_range_end
-                        );
-                        println!("");
+    //                     println!("Found a completed task at lines: {} to {}",
+    //                         task.task_block_range_start,
+    //                         task.task_block_range_end
+    //                     );
+    //                     println!("");
 
-                        _print_task(journal, task, false);
+    //                     _print_task(journal, task, false);
 
-                        process::exit(1);
-                    }
-                }
-            };
+    //                     process::exit(1);
+    //                 }
+    //             }
+    //         };
 
-        }
-    }
+    //     }
+    // }
 
     journal.opened_files.remove(&tracked_path);
 
@@ -3310,29 +3293,29 @@ struct LocalDirectiveSwitches {
     /* default:... directives */
 
     // default:status: done/not done
-    default_status: Option<Status>,
+    default_status: Option<LineLocation<Status>>,
 
     /* require:... directives */
 
     // require:status: yes/no/true/false/done/not done/incubate
-    require_status: Option<StatusDirective>,
+    require_status: Option<LineLocation<StatusDirective>>,
 
     // require:project:prefix: /initial/path/to/project
     //
     // This enforces tasks to have a certain prefix
-    require_project_prefix: Option<ProjectPath>,
+    require_project_prefix: Option<LineLocation<ProjectPath>>,
 
     // require:project: true/false/yes/no
     //
     // This enforces tasks to have a project attribute
-    require_project: Option<bool>,
+    require_project: Option<LineLocation<bool>>,
 
-    /* project:... directives */
+    /* inject:... directives */
 
-    // project:base: /initial/path/to/project
+    // inject:project:base: /initial/path/to/project
     //
     // This injects project path as suffix.
-    project_base: Option<ProjectPath>
+    inject_project_base: Option<LineLocation<ProjectPath>>
 }
 
 impl LocalDirectiveSwitches {
@@ -3351,80 +3334,128 @@ impl LocalDirectiveSwitches {
             require_project_prefix: None,
             require_project: None,
 
-            /* project:... directive */
+            /* inject:... directive */
 
-            project_base: None
+            inject_project_base: None
         }
     }
 
-    fn pass_validation(&self, task: &Task, journal: &GTD) -> bool {
-        true
-    }
+    // If necessary, transform the given task based on the directive switches
+    fn transform_task(&self, task: &mut Task, journal: &GTD) {
 
-}
+        // default:status
+        if task.status.is_none() && self.default_status.is_some() {
 
-struct DirectiveSwitches__old {
-    require_no_completed_tasks: Option<bool>,
-    required_project_prefix: Option<Vec<String>>
-}
+            let status = self.default_status
+                .as_ref().unwrap()  // Option
+                .as_ref().unwrap(); // LineLocation
 
-impl DirectiveSwitches__old {
-    fn new() -> Self {
-        DirectiveSwitches__old {
-            require_no_completed_tasks: None,
-            required_project_prefix: None
+            task.status = Some(status.clone());
         }
+
+        // project:base
+        if let Some(ref project_base) = self.inject_project_base {
+
+            let project_base: &ProjectPath = project_base.as_ref().unwrap();
+
+            task.project = if task.project.is_some() {
+                let mut path = project_base.clone();
+                path.extend_from_slice(task.project.as_ref().unwrap());
+                Some(path)
+            } else {
+                Some(project_base.clone())
+            };
+        }
+
     }
 
-    // TODO: this function produces side-effects; refactor
     fn pass_validation(&self, task: &Task, journal: &GTD) -> bool {
 
-        match self.required_project_prefix {
-            None => {},
-            Some(ref required_project_prefix) => {
+        // require_status: None,
+        // require_project_prefix: None,
 
-                let has_required_project_prefix: bool = match task.project {
-                    None => false,
-                    Some(ref project_path) => {
+        // require:project
+        if let Some(ref require_project) = self.require_project {
+            if *require_project.as_ref().unwrap() && task.project.is_none() {
 
-                        // ensure task.project has project_path as prefix
+                println!("From directive `require:project` in: {}", require_project.location());
 
-                        if project_path.len() < required_project_prefix.len() {
-                            false
-                        } else {
+                println!("The following task is missing a project:");
 
-                            let mut matches = true;
-                            let mut idx = required_project_prefix.len();
-
-                            while idx > 0 {
-                                idx -= 1;
-
-                                if required_project_prefix[idx] != project_path[idx] {
-                                    matches = false;
-                                    break;
-                                }
-                            }
-
-                            matches
-                        }
-                    }
-                };
-
-                if !has_required_project_prefix {
-
-                    println!("The following task's project path does not begin with required project path prefix: {}",
-                        required_project_prefix.join(" / "));
-
-                    _print_task(journal, task, false);
-                    process::exit(1);
-                }
-
+                _print_task(journal, task, false);
+                process::exit(1);
             }
-        };
+        }
+
 
         return true;
     }
+
 }
+
+// TODO: remove
+// struct DirectiveSwitches__old {
+//     require_no_completed_tasks: Option<bool>,
+//     required_project_prefix: Option<Vec<String>>
+// }
+
+// impl DirectiveSwitches__old {
+//     fn new() -> Self {
+//         DirectiveSwitches__old {
+//             require_no_completed_tasks: None,
+//             required_project_prefix: None
+//         }
+//     }
+
+//     // TODO: this function produces side-effects; refactor
+//     fn pass_validation(&self, task: &Task, journal: &GTD) -> bool {
+
+//         match self.required_project_prefix {
+//             None => {},
+//             Some(ref required_project_prefix) => {
+
+//                 let has_required_project_prefix: bool = match task.project {
+//                     None => false,
+//                     Some(ref project_path) => {
+
+//                         // ensure task.project has project_path as prefix
+
+//                         if project_path.len() < required_project_prefix.len() {
+//                             false
+//                         } else {
+
+//                             let mut matches = true;
+//                             let mut idx = required_project_prefix.len();
+
+//                             while idx > 0 {
+//                                 idx -= 1;
+
+//                                 if required_project_prefix[idx] != project_path[idx] {
+//                                     matches = false;
+//                                     break;
+//                                 }
+//                             }
+
+//                             matches
+//                         }
+//                     }
+//                 };
+
+//                 if !has_required_project_prefix {
+
+//                     println!("The following task's project path does not begin with required project path prefix: {}",
+//                         required_project_prefix.join(" / "));
+
+//                     _print_task(journal, task, false);
+//                     process::exit(1);
+//                 }
+
+//             }
+//         };
+
+//         return true;
+//     }
+// }
 
 #[derive(Debug)]
 enum Directive {
@@ -3442,9 +3473,9 @@ enum Directive {
     RequireProjectPrefix(ProjectPath),
     RequireProject(bool),
 
-    /* project:... directives */
+    /* inject:... directives */
 
-    ProjectBase(ProjectPath)
+    InjectProjectBase(ProjectPath)
 }
 
 fn directives(input: Input<u8>) -> U8Result<LineToken> {
@@ -3579,6 +3610,8 @@ fn directive_project_base(input: Input<u8>) -> U8Result<Directive> {
 
     parse!{input;
 
+        string_ignore_case("inject".as_bytes());
+        token(b':');
         string_ignore_case("project".as_bytes());
         token(b':');
         string_ignore_case("base".as_bytes());
@@ -3588,7 +3621,7 @@ fn directive_project_base(input: Input<u8>) -> U8Result<Directive> {
 
         let project_base = string_list(b'/');
 
-        ret Directive::ProjectBase(project_base)
+        ret Directive::InjectProjectBase(project_base)
     }
 }
 
@@ -5263,6 +5296,34 @@ fn path_satisfies_tree(tree: &Tree, path: &[String]) -> bool {
     return false;
 }
 
+/* all things line-numbers */
+
+type LineNumber = u64;
+
+// file_path, line_number, context
+struct LineLocation<T>(String, LineNumber, T);
+
+impl<T> LineLocation<T> {
+
+    #[inline]
+    fn as_ref(&self) -> LineLocation<&T> {
+        let LineLocation(ref file_path, line_num, ref wrapped) = *self;
+        return LineLocation(file_path.clone(), line_num, wrapped);
+    }
+
+    #[inline]
+    fn unwrap(self) -> T {
+        let LineLocation(_, _, wrapped) = self;
+        return wrapped;
+    }
+
+    #[inline]
+    fn location(&self) -> String {
+        let LineLocation(ref file_path, line_num, _) = *self;
+        return format!("{}:{}", file_path, line_num);
+    }
+}
+
 /*
 Adapted from: https://gist.github.com/m4rw3r/1f43559dcd73bf46e845
 Thanks to github.com/m4rw3r for wrapping parsers for line number tracking!
@@ -5277,16 +5338,16 @@ pub trait NumberingType {
 }
 
 #[derive(Debug, Default)]
-pub struct LineNumber(u64);
+pub struct LinesParsed(u64);
 
 // Semantics: count number of newlines
-impl LineNumber {
+impl LinesParsed {
     pub fn new() -> Self {
-        LineNumber::default()
+        LinesParsed::default()
     }
 }
 
-impl NumberingType for LineNumber {
+impl NumberingType for LinesParsed {
     type Token    = u8;
     type Position = u64;
 
@@ -5366,7 +5427,7 @@ fn line_numbering() {
         i.set(i.get() + 1);
         take(d, 2)
     };
-    let mut n = Numbering::new(LineNumber::new(), p);
+    let mut n = Numbering::new(LinesParsed::new(), p);
     // If we could implement FnMut for Numbering then we would be good, but we need to wrap now:
     let mut m = |i| n.parse(i);
 
