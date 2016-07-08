@@ -3720,6 +3720,7 @@ fn bool_option_parser(i: Input<u8>) -> U8Result<bool> {
         |i| parse!{i;
 
             string_ignore_case("yes".as_bytes()) <|>
+            string_ignore_case("y".as_bytes()) <|>
             string_ignore_case("true".as_bytes());
 
             ret true
@@ -3727,6 +3728,7 @@ fn bool_option_parser(i: Input<u8>) -> U8Result<bool> {
         |i| parse!{i;
 
             string_ignore_case("no".as_bytes()) <|>
+            string_ignore_case("n".as_bytes()) <|>
             string_ignore_case("false".as_bytes());
 
             ret false
