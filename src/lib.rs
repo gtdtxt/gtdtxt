@@ -2400,8 +2400,8 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
 
     let mut input = Source::new(file);
 
-    // directive switches
-    let mut directive_switch = DirectiveSwitches::new();
+    // file scoped directive switches
+    let mut directive_switch = LocalDirectiveSwitches::new();
 
     // initial state
     let mut previous_state: ParseState = ParseState::Start;
@@ -3266,14 +3266,94 @@ fn task_id(input: Input<u8>) -> U8Result<TaskBlock> {
 
 /* directives */
 
-struct DirectiveSwitches {
+enum StatusDirective {
+    Require(bool),
+    Status(Status)
+}
+
+// state for directives that are applied to all files
+// struct GlobalDirectiveSwitches {
+
+//     // require:project:prefix: /initial/path/to/project
+//     require_project_prefix: Option<ProjectPath>,
+
+//     // require:project: true/false/yes/no
+//     require_project: Option<bool>,
+
+//     // project:base: /initial/path/to/project
+//     project_base: Option<ProjectPath>
+// }
+
+// state for directives that are applied locally to files
+struct LocalDirectiveSwitches {
+
+    // TODO: deprecate
+    require_no_completed_tasks: Option<bool>,
+
+    /* default:... directives */
+
+    // default:status: done/not done
+    default_status: Option<Status>,
+
+    /* require:... directives */
+
+    // require:status: yes/no/true/false/done/not done/incubate
+    require_status: Option<StatusDirective>,
+
+    // require:project:prefix: /initial/path/to/project
+    //
+    // This enforces tasks to have a certain prefix
+    require_project_prefix: Option<ProjectPath>,
+
+    // require:project: true/false/yes/no
+    //
+    // This enforces tasks to have a project attribute
+    require_project: Option<bool>,
+
+    /* project:... directives */
+
+    // project:base: /initial/path/to/project
+    //
+    // This injects project path as suffix.
+    project_base: Option<ProjectPath>
+}
+
+impl LocalDirectiveSwitches {
+
+    fn new() -> Self {
+
+        LocalDirectiveSwitches {
+
+            /* default:... directive */
+
+            default_status: None,
+
+            /* require:... directive */
+
+            require_status: None,
+            require_project_prefix: None,
+            require_project: None,
+
+            /* project:... directive */
+
+            project_base: None
+        }
+    }
+
+    fn pass_validation(&self, task: &Task, journal: &GTD) -> bool {
+        true
+    }
+
+}
+
+struct DirectiveSwitches__old {
     require_no_completed_tasks: Option<bool>,
     required_project_prefix: Option<Vec<String>>
 }
 
-impl DirectiveSwitches {
-    fn new() -> DirectiveSwitches {
-        DirectiveSwitches {
+impl DirectiveSwitches__old {
+    fn new() -> Self {
+        DirectiveSwitches__old {
             require_no_completed_tasks: None,
             required_project_prefix: None
         }
@@ -3331,9 +3411,27 @@ impl DirectiveSwitches {
 
 #[derive(Debug)]
 enum Directive {
+
+    // include: path/to/file
     Include(String),
-    ShouldNotContainCompletedTasks(bool),
-    RequiredProjectPrefix(Vec<String>)
+
+    /* default:... directives */
+
+    DefaultStatus(Status),
+
+    /* require:... directives */
+
+    RequireStatus(StatusDirective),
+    RequireProjectPrefix(ProjectPath),
+    RequireProject(bool),
+
+    /* project:... directives */
+
+    ProjectBase(ProjectPath),
+
+    // TODO: deprecated; remove
+    // ShouldNotContainCompletedTasks(bool),
+    // RequiredProjectPrefix(Vec<String>)
 }
 
 fn directives(input: Input<u8>) -> U8Result<LineToken> {
