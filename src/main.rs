@@ -1699,13 +1699,6 @@ impl GTD {
             };
         }
 
-        // if let Some(ref title) = task.title {
-        //     print_task(self, &task);
-        //     println!("------");
-        //     // println!("task.title: {}", title);
-        // }
-
-
         match task.done_at {
             None => {},
             Some(ref done_at) => {
@@ -3415,7 +3408,6 @@ fn parse_non_empty_line(i: Input<u8>, above: Line) -> U8Result<Vec<u8>> {
 
 fn parse_line(i: Input<u8>) -> U8Result<Line> {
 
-    // many_till(i, any, |i| terminating(i))
     or(i,
         |i| parse!{i;
             terminating();
