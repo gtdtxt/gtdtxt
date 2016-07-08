@@ -2562,10 +2562,16 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                                 parse_file(Some(tracked_path.clone()), path_to_file, journal);
                             },
                             Directive::DefaultStatus(result) => {
-                                directive_switch.default_status = Some(LineLocation(tracked_path.clone(), num_of_lines_parsed, result));
+                                directive_switch.default_status =
+                                    Some(LineLocation(tracked_path.clone(), num_of_lines_parsed, result));
                             },
                             Directive::RequireStatus(result) => {
-                                directive_switch.require_status = Some(LineLocation(tracked_path.clone(), num_of_lines_parsed, result));
+                                directive_switch.require_status =
+                                    Some(LineLocation(tracked_path.clone(), num_of_lines_parsed, result));
+                            },
+                            Directive::RequireExcludeStatus(result) => {
+                                directive_switch.require_exclude_status =
+                                    Some(LineLocation(tracked_path.clone(), num_of_lines_parsed, result));
                             },
                             Directive::RequireProjectPrefix(result) => {
                                 directive_switch.require_project_prefix =
@@ -3303,6 +3309,9 @@ struct LocalDirectiveSwitches {
     // require:status: yes/no/true/false/done/not done/incubate
     require_status: Option<LineLocation<StatusDirective>>,
 
+    // require:exclude:status: done/not done/incubate
+    require_exclude_status: Option<LineLocation<Status>>,
+
     // require:project:prefix: /initial/path/to/project
     //
     // This enforces tasks to have a certain prefix
@@ -3334,6 +3343,7 @@ impl LocalDirectiveSwitches {
             /* require:... directive */
 
             require_status: None,
+            require_exclude_status: None,
             require_project_prefix: None,
             require_project: None,
 
@@ -3373,6 +3383,29 @@ impl LocalDirectiveSwitches {
     }
 
     fn pass_validation(&self, task: &Task, journal: &GTD) -> bool {
+
+        // require:exclude:status
+        if let Some(ref exclude) = self.require_exclude_status {
+
+            let task_status: Status = if task.status.is_none() {
+                // tasks with no explicit task are 'not done' by default
+                Status::NotDone
+            } else {
+                task.status.as_ref().unwrap().clone()
+            };
+
+            let status_exclude = exclude.as_ref().unwrap();
+
+            if *status_exclude == task_status {
+
+                println!("From directive `require:exclude:status` in: {}", exclude.location());
+
+                println!("The following task's `status` attribute should not be {}:\n", status_exclude.string());
+
+                _print_task(journal, task, false);
+                process::exit(1);
+            }
+        }
 
         // require:status
         if let Some(ref require_status) = self.require_status {
@@ -3491,6 +3524,7 @@ enum Directive {
     /* require:... directives */
 
     RequireStatus(StatusDirective),
+    RequireExcludeStatus(Status),
     RequireProjectPrefix(ProjectPath),
     RequireProject(bool),
 
@@ -3511,11 +3545,14 @@ fn directives(input: Input<u8>) -> U8Result<LineToken> {
             /* require:... directives */
 
             directive_require_status() <|>
+            directive_require_exclude_status() <|>
+
+            // NOTE: order here matters
             directive_require_project_prefix() <|>
             directive_require_project() <|>
 
-            /* project:... directives */
-            directive_project_base();
+            /* inject:... directives */
+            directive_inject_project_base();
 
         ret {
             LineToken::Directive(directive)
@@ -3591,6 +3628,27 @@ fn directive_require_status(input: Input<u8>) -> U8Result<Directive> {
     }
 }
 
+fn directive_require_exclude_status(input: Input<u8>) -> U8Result<Directive> {
+
+    parse!{input;
+
+        string_ignore_case("require".as_bytes());
+        token(b':');
+        string_ignore_case("exclude".as_bytes());
+        token(b':');
+        string_ignore_case("status".as_bytes());
+        token(b':');
+
+        skip_many(space_or_tab);
+
+        let status = parse_status();
+
+        let _nothing: Vec<()> = many_till(space_or_tab, terminating);
+
+        ret Directive::RequireExcludeStatus(status)
+    }
+}
+
 fn directive_require_project_prefix(input: Input<u8>) -> U8Result<Directive> {
 
     parse!{input;
@@ -3627,7 +3685,7 @@ fn directive_require_project(input: Input<u8>) -> U8Result<Directive> {
     }
 }
 
-fn directive_project_base(input: Input<u8>) -> U8Result<Directive> {
+fn directive_inject_project_base(input: Input<u8>) -> U8Result<Directive> {
 
     parse!{input;
 
