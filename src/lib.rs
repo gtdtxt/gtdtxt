@@ -2584,9 +2584,15 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                                 directive_switch.inject_project_prefix =
                                     Some(LineLocation(tracked_path.clone(), num_of_lines_parsed, result));
                             },
+                            Directive::InjectProjectPrefixDelete => {
+                                directive_switch.inject_project_prefix = None;
+                            },
                             Directive::EnsureProjectPrefix(result) => {
                                 directive_switch.ensure_project_prefix =
                                     Some(LineLocation(tracked_path.clone(), num_of_lines_parsed, result));
+                            },
+                            Directive::EnsureProjectPrefixDelete => {
+                                directive_switch.ensure_project_prefix = None;
                             }
                         };
 
@@ -3562,10 +3568,12 @@ enum Directive {
     /* inject:... directives */
 
     InjectProjectPrefix(ProjectPath),
+    InjectProjectPrefixDelete,
 
     /* ensure:... directives */
 
     EnsureProjectPrefix(ProjectPath),
+    EnsureProjectPrefixDelete
 
 }
 
@@ -3588,10 +3596,17 @@ fn directives(input: Input<u8>) -> U8Result<LineToken> {
             directive_require_project() <|>
 
             /* inject:... directives */
+
+            // NOTE: order matters
+            directive_inject_project_prefix_delete() <|>
             directive_inject_project_prefix() <|>
 
             /* ensure:... directives */
+
+            // NOTE: order matters
+            directive_ensure_project_prefix_delete() <|>
             directive_ensure_project_prefix();
+
 
         ret {
             LineToken::Directive(directive)
@@ -3737,9 +3752,29 @@ fn directive_inject_project_prefix(input: Input<u8>) -> U8Result<Directive> {
 
         skip_many(space_or_tab);
 
-        let project_base = string_list(b'/');
+        let project_path_inject = string_list(b'/');
 
-        ret Directive::InjectProjectPrefix(project_base)
+        ret Directive::InjectProjectPrefix(project_path_inject)
+    }
+}
+
+fn directive_inject_project_prefix_delete(input: Input<u8>) -> U8Result<Directive> {
+
+    parse!{input;
+
+        string_ignore_case("inject".as_bytes());
+        token(b':');
+        string_ignore_case("project".as_bytes());
+        token(b':');
+        string_ignore_case("prefix".as_bytes());
+        token(b':');
+        string_ignore_case("delete".as_bytes());
+
+        skip_many(space_or_tab);
+
+        let _nothing: Vec<()> = many_till(space_or_tab, terminating);
+
+        ret Directive::InjectProjectPrefixDelete
     }
 }
 
@@ -3759,6 +3794,26 @@ fn directive_ensure_project_prefix(input: Input<u8>) -> U8Result<Directive> {
         let project_base = string_list(b'/');
 
         ret Directive::EnsureProjectPrefix(project_base)
+    }
+}
+
+fn directive_ensure_project_prefix_delete(input: Input<u8>) -> U8Result<Directive> {
+
+    parse!{input;
+
+        string_ignore_case("ensure".as_bytes());
+        token(b':');
+        string_ignore_case("project".as_bytes());
+        token(b':');
+        string_ignore_case("prefix".as_bytes());
+        token(b':');
+        string_ignore_case("delete".as_bytes());
+
+        skip_many(space_or_tab);
+
+        let _nothing: Vec<()> = many_till(space_or_tab, terminating);
+
+        ret Directive::EnsureProjectPrefixDelete
     }
 }
 
