@@ -217,7 +217,7 @@ Value is only applied if those tasks do not have explicit `status` attribute.
 
 #### `require:status`
 
-Enforce `status` attribute value requirement to tasks appearing after this directive.
+Require tasks appearing after this directive to **have** this `status` attribute value.
 
 **Usage:**
 
@@ -239,6 +239,16 @@ Enforce `status` attribute value requirement to tasks appearing after this direc
     - **Done:** done, complete, finished, finish, fin
     - **Not Done:** not done, active, progress, in progress, in-progress, pending, is active
     - **Incubate:** incubate, hide, hidden, later, someday, inactive, not active
+
+#### `require:exclude:status`
+
+Require tasks appearing after this directive to **not have** this `status` attribute value.
+
+**Usage:**
+
+`require:status: done`
+
+*TBA*
 
 #### `require:project:prefix:`
 
