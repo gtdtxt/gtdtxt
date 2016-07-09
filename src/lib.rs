@@ -64,6 +64,12 @@ pub fn main() {
         .about("Getting Things Done (GTD) command-line application that parses human-readable to-do list text files.")
         .author("Alberto Leal <mailforalberto@gmail.com> (github.com/dashed)")
         .arg(
+            Arg::with_name("hide-notes")
+            .help("Hide notes of tasks. Notes are shown by default.")
+            .long("hide-notes")
+            .required(false)
+        )
+        .arg(
             Arg::with_name("show-line-num-with-file-location")
             .help("Show line number location of task with file location path.{n}\
                 Example: /path/to/file:line_number{n}")
@@ -529,6 +535,7 @@ pub fn main() {
 
     let show_headers: bool = !cmd_matches.is_present("hide-headers");
 
+    journal.hide_notes = cmd_matches.is_present("hide-notes");
     journal.show_line_num_with_file_location = cmd_matches.is_present("show-line-num-with-file-location");
     journal.sort_overdue_by_priority = cmd_matches.is_present("sort-overdue-by-priority");
     journal.hide_flagged = cmd_matches.is_present("hide-flagged");
@@ -1278,6 +1285,13 @@ fn _print_task(journal: &GTD, task: &Task, require_title: bool) {
     match task.note {
         None => {},
         Some(ref note) => {
+
+            let note = if journal.hide_notes {
+                format!("{}", "(hidden)".red())
+            } else {
+                note.clone()
+            };
+
             println!("{:>11} {}",
                 "Notes:".bold().blue(),
                 note
@@ -1443,6 +1457,7 @@ struct GTD {
     previous_task_block_line: u64,
 
     /* flag/switches */
+    hide_notes: bool,
     hide_flagged: bool,
     show_only_flagged: bool,
     show_done: bool,
@@ -1538,6 +1553,7 @@ impl GTD {
             previous_task_block_line: 0,
 
             /* options */
+            hide_notes: false,
             hide_flagged: false,
             show_only_flagged: false,
             show_done: false,
