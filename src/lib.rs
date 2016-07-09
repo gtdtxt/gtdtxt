@@ -2589,6 +2589,9 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                                 directive_switch.require_exclude_status =
                                     Some(LineLocation(tracked_path.clone(), num_of_lines_parsed, result));
                             },
+                            Directive::RequireExcludeStatusDelete => {
+                                directive_switch.require_exclude_status = None;
+                            },
                             Directive::RequireProjectPrefix(result) => {
                                 directive_switch.require_project_prefix =
                                     Some(LineLocation(tracked_path.clone(), num_of_lines_parsed, result));
@@ -3577,7 +3580,10 @@ enum Directive {
     /* require:... directives */
 
     RequireStatus(StatusDirective),
+
     RequireExcludeStatus(Status),
+    RequireExcludeStatusDelete,
+
     RequireProjectPrefix(ProjectPath),
     RequireProject(bool),
 
@@ -3605,6 +3611,8 @@ fn directives(input: Input<u8>) -> U8Result<LineToken> {
             /* require:... directives */
 
             directive_require_status() <|>
+
+            directive_require_exclude_status_delete() <|>
             directive_require_exclude_status() <|>
 
             // NOTE: order here matters
@@ -3719,6 +3727,24 @@ fn directive_require_exclude_status(input: Input<u8>) -> U8Result<Directive> {
     }
 }
 
+fn directive_require_exclude_status_delete(input: Input<u8>) -> U8Result<Directive> {
+
+    parse!{input;
+
+        string_ignore_case("delete".as_bytes());
+        token(b':');
+        string_ignore_case("require".as_bytes());
+        token(b':');
+        string_ignore_case("exclude".as_bytes());
+        token(b':');
+        string_ignore_case("status".as_bytes());
+
+        let _nothing: Vec<()> = many_till(space_or_tab, terminating);
+
+        ret Directive::RequireExcludeStatusDelete
+    }
+}
+
 fn directive_require_project_prefix(input: Input<u8>) -> U8Result<Directive> {
 
     parse!{input;
@@ -3778,13 +3804,13 @@ fn directive_inject_project_prefix_delete(input: Input<u8>) -> U8Result<Directiv
 
     parse!{input;
 
+        string_ignore_case("delete".as_bytes());
+        token(b':');
         string_ignore_case("inject".as_bytes());
         token(b':');
         string_ignore_case("project".as_bytes());
         token(b':');
         string_ignore_case("prefix".as_bytes());
-        token(b':');
-        string_ignore_case("delete".as_bytes());
 
         skip_many(space_or_tab);
 
@@ -3817,13 +3843,13 @@ fn directive_ensure_project_prefix_delete(input: Input<u8>) -> U8Result<Directiv
 
     parse!{input;
 
+        string_ignore_case("delete".as_bytes());
+        token(b':');
         string_ignore_case("ensure".as_bytes());
         token(b':');
         string_ignore_case("project".as_bytes());
         token(b':');
         string_ignore_case("prefix".as_bytes());
-        token(b':');
-        string_ignore_case("delete".as_bytes());
 
         skip_many(space_or_tab);
 
