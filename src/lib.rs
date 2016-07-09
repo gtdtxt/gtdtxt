@@ -3856,9 +3856,9 @@ fn parse_line(i: Input<u8>) -> U8Result<Line> {
         },
         |i| parse!{i;
 
+            // TODO: remove; out of scope for this parser
             // lines with just whitespace are probably not interesting
-            // TODO: consider space_or_tab?
-            skip_many(whitespace);
+            // skip_many(whitespace);
 
             let line: Vec<u8> = many_till(any, terminating);
             ret Line::NonEmpty(line)
