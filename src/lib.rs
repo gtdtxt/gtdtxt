@@ -1517,15 +1517,15 @@ struct GTD {
     // due_soon: BTreeMap<i64, Vec<i32>>,
 
     // inbox contain any tasks that do not have a project
-    // priority -> vector of task ids ordered by recent appearance
+    // priority -> vector of task ids ordered by recent appearance (default)
     inbox: BTreeMap<i64, Vec<u64>>,
 
     // this contains any tasks that are inactive
-    // priority -> vector of task ids ordered by recent appearance
+    // priority -> vector of task ids ordered by recent appearance (default)
     deferred: BTreeMap<i64, Vec<u64>>,
 
     // this contains any tasks that are compelted
-    // priority -> vector of task ids ordered by recent appearance
+    // priority -> vector of task ids ordered by recent appearance (default)
     done: BTreeMap<i64, Vec<u64>>
 }
 
@@ -3002,7 +3002,6 @@ fn task_time(input: Input<u8>) -> U8Result<TaskBlock> {
         skip_many(space_or_tab);
 
         let time: u64 = multiple_time_range();
-
 
         let _nothing: Vec<()> = many_till(space_or_tab, terminating);
 
