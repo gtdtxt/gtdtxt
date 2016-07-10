@@ -3611,24 +3611,24 @@ fn directives(input: Input<u8>) -> U8Result<LineToken> {
 
             directive_require_status() <|>
 
-            directive_require_exclude_status_delete() <|>
             directive_require_exclude_status() <|>
 
-            // NOTE: order here matters
             directive_require_project_prefix() <|>
             directive_require_project() <|>
 
             /* inject:... directives */
 
-            // NOTE: order matters
-            directive_inject_project_prefix_delete() <|>
             directive_inject_project_prefix() <|>
 
             /* ensure:... directives */
 
-            // NOTE: order matters
-            directive_ensure_project_prefix_delete() <|>
-            directive_ensure_project_prefix();
+            directive_ensure_project_prefix() <|>
+
+            /* deleting */
+
+            directive_require_exclude_status_delete() <|>
+            directive_inject_project_prefix_delete() <|>
+            directive_ensure_project_prefix_delete();
 
 
         ret {
