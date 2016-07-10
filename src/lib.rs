@@ -2786,7 +2786,9 @@ fn __pre_block_comments(i: Input<u8>) -> U8Result<()> {
         comments_block();
         skip_many(space_or_tab);
 
-        comments_one_line() <|> terminating();
+        comments_one_line() <|>
+        terminating() <|>
+        __pre_block_comments();
 
         ret ()
     }
