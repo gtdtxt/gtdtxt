@@ -1,6 +1,6 @@
 [package]
 name = "gtdtxt"
-version = "0.11.2"
+version = "0.12.0"
 authors = ["Alberto Leal <mailforalberto@gmail.com>"]
 
 # src: http://stackoverflow.com/a/26946705/412627

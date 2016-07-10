@@ -20,7 +20,7 @@ For a pragmatic introduction to GTD, see:
 ## Usage
 
 ```
-gtdtxt v0.11.2 (semver.org)
+gtdtxt v0.12.0 (semver.org 2.0)
 Alberto Leal <mailforalberto@gmail.com> (github.com/dashed)
 Getting Things Done (GTD) command-line application that parses human-readable to-do list text files.
 
@@ -28,26 +28,32 @@ USAGE:
     gtdtxt [FLAGS] [OPTIONS] <path to gtdtxt file> [SUBCOMMAND]
 
 FLAGS:
-    -h, --help                        Prints help information
-    -x, --hide-by-default             Hide tasks by default. Usage of flags / options are necessary to display tasks.
-    -F, --hide-flagged                Hide flagged tasks.
-    -u, --hide-headers                Hide headers. Shown by default.
-    -I, --hide-incomplete             Hide incomplete tasks.
-    -n, --hide-nonproject-tasks       Hide tasks not belonging to a project.
-    -o, --hide-overdue                Hide overdue tasks.
-    -r, --show-deferred               Reveal deferred tasks.
-    -d, --show-done                   Show completed tasks.
-    -e, --show-flagged                Show flagged tasks. Used with --hide-by-default
-    -b, --show-incomplete             Show incomplete tasks. Used with --hide-by-default
-    -i, --show-incubate               Show incubated tasks.
-    -g, --show-nonproject-tasks       Show tasks that are not in a project. Used with --hide-by-default
-    -f, --show-only-flagged           Show only flagged tasks.
-    -a, --show-overdue                Show overdue tasks. Used with --hide-by-default
-    -j, --show-project-tasks          Show tasks that are not in a project. Used with --hide-by-default
-    -z, --sort-overdue-by-priority    Sort overdue tasks by priority. By default overdue tasks are shown from oldest
-                                      due to recently due.
-    -q, --validate                    Validate file and suppress any output.
-    -V, --version                     Prints version information
+    -h, --help                                Prints help information
+    -x, --hide-by-default                     Hide tasks by default. Usage of flags / options are necessary to display
+                                              tasks.
+    -F, --hide-flagged                        Hide flagged tasks.
+    -u, --hide-headers                        Hide headers. Shown by default.
+    -I, --hide-incomplete                     Hide incomplete tasks.
+    -n, --hide-nonproject-tasks               Hide tasks not belonging to a project.
+        --hide-notes                          Hide notes of tasks. Notes are shown by default.
+    -o, --hide-overdue                        Hide overdue tasks.
+    -r, --show-deferred                       Reveal deferred tasks.
+    -d, --show-done                           Show completed tasks.
+    -e, --show-flagged                        Show flagged tasks. Used with --hide-by-default
+    -b, --show-incomplete                     Show incomplete tasks. Used with --hide-by-default
+    -i, --show-incubate                       Show incubated tasks.
+        --show-line-num-with-file-location    Show line number location of task with file location path.
+                                              Example:
+                                              /path/to/file:line_number
+                                              
+    -g, --show-nonproject-tasks               Show tasks that are not in a project. Used with --hide-by-default
+    -f, --show-only-flagged                   Show only flagged tasks.
+    -a, --show-overdue                        Show overdue tasks. Used with --hide-by-default
+    -j, --show-project-tasks                  Show tasks that are not in a project. Used with --hide-by-default
+    -z, --sort-overdue-by-priority            Sort overdue tasks by priority. By default overdue tasks are shown from
+                                              oldest due to recently due.
+    -q, --validate                            Validate file and suppress any output.
+    -V, --version                             Prints version information
 
 OPTIONS:
     -w, --due-within <due-within>
