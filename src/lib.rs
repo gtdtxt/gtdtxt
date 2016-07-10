@@ -3784,6 +3784,8 @@ fn directive_require_project(input: Input<u8>) -> U8Result<Directive> {
 
         let result = bool_option_parser();
 
+        let _nothing: Vec<()> = many_till(space_or_tab, terminating);
+
         ret Directive::RequireProject(result)
     }
 }
