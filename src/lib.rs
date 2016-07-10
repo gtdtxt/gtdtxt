@@ -3660,7 +3660,7 @@ fn directive_default_status(input: Input<u8>) -> U8Result<Directive> {
     parse!{input;
 
         string_ignore_case("default".as_bytes());
-        token(b':');
+        token(b'.');
         string_ignore_case("status".as_bytes());
         token(b':');
 
@@ -3679,7 +3679,7 @@ fn directive_require_status(input: Input<u8>) -> U8Result<Directive> {
     parse!{input;
 
         string_ignore_case("require".as_bytes());
-        token(b':');
+        token(b'.');
         string_ignore_case("status".as_bytes());
         token(b':');
 
@@ -3710,9 +3710,9 @@ fn directive_require_exclude_status(input: Input<u8>) -> U8Result<Directive> {
     parse!{input;
 
         string_ignore_case("require".as_bytes());
-        token(b':');
+        token(b'.');
         string_ignore_case("exclude".as_bytes());
-        token(b':');
+        token(b'.');
         string_ignore_case("status".as_bytes());
         token(b':');
 
@@ -3731,11 +3731,14 @@ fn directive_require_exclude_status_delete(input: Input<u8>) -> U8Result<Directi
     parse!{input;
 
         string_ignore_case("delete".as_bytes());
-        token(b':');
+
+        space_or_tab();
+        skip_many(space_or_tab);
+
         string_ignore_case("require".as_bytes());
-        token(b':');
+        token(b'.');
         string_ignore_case("exclude".as_bytes());
-        token(b':');
+        token(b'.');
         string_ignore_case("status".as_bytes());
 
         let _nothing: Vec<()> = many_till(space_or_tab, terminating);
@@ -3749,9 +3752,9 @@ fn directive_require_project_prefix(input: Input<u8>) -> U8Result<Directive> {
     parse!{input;
 
         string_ignore_case("require".as_bytes());
-        token(b':');
+        token(b'.');
         string_ignore_case("project".as_bytes());
-        token(b':');
+        token(b'.');
         string_ignore_case("prefix".as_bytes());
         token(b':');
 
@@ -3768,7 +3771,7 @@ fn directive_require_project(input: Input<u8>) -> U8Result<Directive> {
     parse!{input;
 
         string_ignore_case("require".as_bytes());
-        token(b':');
+        token(b'.');
         string_ignore_case("project".as_bytes());
         token(b':');
 
@@ -3785,9 +3788,9 @@ fn directive_inject_project_prefix(input: Input<u8>) -> U8Result<Directive> {
     parse!{input;
 
         string_ignore_case("inject".as_bytes());
-        token(b':');
+        token(b'.');
         string_ignore_case("project".as_bytes());
-        token(b':');
+        token(b'.');
         string_ignore_case("prefix".as_bytes());
         token(b':');
 
@@ -3804,11 +3807,14 @@ fn directive_inject_project_prefix_delete(input: Input<u8>) -> U8Result<Directiv
     parse!{input;
 
         string_ignore_case("delete".as_bytes());
-        token(b':');
+
+        space_or_tab();
+        skip_many(space_or_tab);
+
         string_ignore_case("inject".as_bytes());
-        token(b':');
+        token(b'.');
         string_ignore_case("project".as_bytes());
-        token(b':');
+        token(b'.');
         string_ignore_case("prefix".as_bytes());
 
         skip_many(space_or_tab);
@@ -3824,9 +3830,9 @@ fn directive_ensure_project_prefix(input: Input<u8>) -> U8Result<Directive> {
     parse!{input;
 
         string_ignore_case("ensure".as_bytes());
-        token(b':');
+        token(b'.');
         string_ignore_case("project".as_bytes());
-        token(b':');
+        token(b'.');
         string_ignore_case("prefix".as_bytes());
         token(b':');
 
@@ -3843,11 +3849,14 @@ fn directive_ensure_project_prefix_delete(input: Input<u8>) -> U8Result<Directiv
     parse!{input;
 
         string_ignore_case("delete".as_bytes());
-        token(b':');
+
+        space_or_tab();
+        skip_many(space_or_tab);
+
         string_ignore_case("ensure".as_bytes());
-        token(b':');
+        token(b'.');
         string_ignore_case("project".as_bytes());
-        token(b':');
+        token(b'.');
         string_ignore_case("prefix".as_bytes());
 
         skip_many(space_or_tab);
