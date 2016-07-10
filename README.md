@@ -199,14 +199,14 @@ If the given path is relative, then it is relative to the file's directory of wh
 `default` directives apply default values to tasks appearing after those directives. Attribute values in tasks are not *overwritten*.
 These directives are only applied to tasks that appear in the **same file**.
 
-#### `default:status`
+#### `default.status`
 
 Apply default `status` attribute value to tasks appearing after this directive.
 Value is only applied if those tasks do not have explicit `status` attribute.
 
 **Usage:**
 
-`default:status: incubate`
+`default.status: incubate`
 
 * If value is any one of the `Status` values, then this directive adds `status` attribute with the same value to any tasks that does not have an explicit `status` attribute. 
 
@@ -221,13 +221,13 @@ Value is only applied if those tasks do not have explicit `status` attribute.
 
 `require` directives enforce attribute values to tasks appearing after those directives. It is an error if any of those tasks are missing the required attribute, or have the incorrect attribute value.
 
-#### `require:status`
+#### `require.status`
 
 Require tasks appearing after this directive to **have** this `status` attribute value.
 
 **Usage:**
 
-`require:status: incubate`
+`require.status: incubate`
 
 
 * If value is one of `True` values, then any tasks appearing after this `require:status` directive shall be required to have an **explicit** `status` attribute.
@@ -246,7 +246,7 @@ Require tasks appearing after this directive to **have** this `status` attribute
     - **Not Done:** not done, active, progress, in progress, in-progress, pending, is active
     - **Incubate:** incubate, hide, hidden, later, someday, inactive, not active
 
-#### `require:exclude:status`
+#### `require.exclude:status`
 
 Require tasks appearing after this directive to **not have** this `status` attribute value.
 
@@ -256,11 +256,11 @@ Require tasks appearing after this directive to **not have** this `status` attri
 
 *TBA*
 
-#### `require:project:prefix`
+#### `require.project.prefix`
 
 *TBA*
 
-#### `require:project:`
+#### `require.project:`
 
 *TBA*
 
@@ -268,7 +268,7 @@ Require tasks appearing after this directive to **not have** this `status` attri
 
 *TBA*
 
-#### `inject:project:prefix`
+#### `inject.project:prefix`
 
 *TBA*
 
@@ -276,7 +276,7 @@ Require tasks appearing after this directive to **not have** this `status` attri
 
 *TBA*
 
-#### `ensure:project:prefix`
+#### `ensure.project.prefix`
 
 *TBA*
 
