@@ -48,7 +48,7 @@ use chomp::buffer::{Source, Stream, StreamError};
 
 use chomp::{token};
 use chomp::parsers::{string, eof, any, satisfy};
-use chomp::combinators::{or, many_till, many, many1, skip_many, skip_many1, look_ahead};
+use chomp::combinators::{option, or, many_till, many, many1, skip_many, skip_many1, look_ahead};
 use chomp::ascii::{is_whitespace, decimal, digit};
 // use chomp::*;
 
@@ -2826,7 +2826,7 @@ enum TaskBlock {
     Due(NaiveDateTime),
     Defer(Defer),
     Priority(i64),
-    Time(u64),
+    Time(TimeLength),
     Project(Vec<String>),
     Status(Status),
     Contexts(Vec<String>),
@@ -3006,7 +3006,7 @@ fn task_time(input: Input<u8>) -> U8Result<TaskBlock> {
 
         skip_many(space_or_tab);
 
-        let time: u64 = multiple_time_range();
+        let time: TimeLength = multiple_time_range();
 
         let _nothing: Vec<()> = many_till(space_or_tab, terminating);
 
@@ -4638,17 +4638,17 @@ fn __parse_inequality<'a>(input: Input<'a, u8>, needle: &str, output: Inequality
 
 /* time range parsers */
 
-fn parse_times_ranges(i: Input<u8>) -> U8Result<u64> {
+fn parse_times_ranges(i: Input<u8>) -> U8Result<TimeLength> {
     parse!{i;
         skip_many(space_or_tab);
-        let result: u64 = multiple_time_range();
+        let result = multiple_time_range();
         skip_many(space_or_tab);
         eof();
         ret result
     }
 }
 
-fn multiple_time_range(i: Input<u8>) -> U8Result<u64> {
+fn multiple_time_range(i: Input<u8>) -> U8Result<TimeLength> {
 
     parse!{i;
 
@@ -4695,7 +4695,8 @@ fn time_range(i: Input<u8>) -> U8Result<u64> {
         let multiplier = time_range_unit_minutes() <|>
             time_range_unit_hours() <|>
             time_range_unit_days() <|>
-            time_range_unit_seconds();
+            time_range_unit_seconds() <|>
+            time_range_unit_weeks();
 
         ret {
             range * multiplier
@@ -4758,6 +4759,19 @@ fn time_range_unit_days(i: Input<u8>) -> U8Result<u64> {
     }
 }
 
+fn time_range_unit_weeks(i: Input<u8>) -> U8Result<u64> {
+    parse!{i;
+
+        string_ignore_case("weeks".as_bytes()) <|>
+        string_ignore_case("week".as_bytes()) <|>
+        string_ignore_case("wks".as_bytes()) <|>
+        string_ignore_case("wk".as_bytes()) <|>
+        string_ignore_case("w".as_bytes());
+
+        // 604800 seconds in a week
+        ret 604800
+    }
+}
 
 /* datetime parsers */
 
@@ -4791,7 +4805,7 @@ struct ParsedDateTime {
     date: ParsedDate
 }
 
-fn parse_datetime(i: Input<u8>, end_of_day: bool) -> U8Result<NaiveDateTime> {
+fn __parse_datetime(i: Input<u8>, end_of_day: bool) -> U8Result<NaiveDateTime> {
 
     or(i,
         |i| parse!{i;
@@ -4855,6 +4869,53 @@ fn parse_datetime(i: Input<u8>, end_of_day: bool) -> U8Result<NaiveDateTime> {
 
         i.ret(date_time)
     })
+}
+
+fn parse_datetime(i: Input<u8>, end_of_day: bool) -> U8Result<NaiveDateTime> {
+    parse!{i;
+
+        let date_time = __parse_datetime(end_of_day);
+
+        let (should_add, time_span) = option(
+            |i| parse!{i;
+
+                space_or_tab();
+                skip_many(space_or_tab);
+
+                let should_add = option(
+                    |i| or(i,
+                        |i| parse!{i;
+                            string_ignore_case("+".as_bytes()) <|>
+                            string_ignore_case("add".as_bytes());
+                            ret true
+                        },
+                        |i| parse!{i;
+                            string_ignore_case("-".as_bytes()) <|>
+                            string_ignore_case("sub".as_bytes()) <|>
+                            string_ignore_case("subtract".as_bytes());
+                            ret false
+                        }),
+                    true
+                );
+
+                skip_many(space_or_tab);
+
+                let time: TimeLength = multiple_time_range();
+
+                ret (should_add, time)
+
+            },
+            (true, 0)
+        );
+
+        ret {
+            if should_add {
+                date_time + Duration::seconds(time_span as i64)
+            } else {
+                date_time - Duration::seconds(time_span as i64)
+            }
+        }
+    }
 }
 
 fn parse_date(i: Input<u8>) -> U8Result<ParsedDate> {
