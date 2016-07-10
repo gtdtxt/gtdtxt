@@ -2779,23 +2779,28 @@ fn line_token_parser(input: Input<u8>) -> U8Result<LineToken> {
 
 /* preblock */
 
+#[inline]
+fn __pre_block_comments(i: Input<u8>) -> U8Result<()> {
+    parse!{i;
+
+        comments_block();
+        skip_many(space_or_tab);
+
+        comments_one_line() <|> terminating();
+
+        ret ()
+    }
+}
+
+
 fn pre_block(i: Input<u8>) -> U8Result<LineToken> {
     parse!{i;
 
-        /*
-        consume comment blocks or whitespace till
-        one line comments or terminating
-         */
-        let _line: Vec<()> = many_till(
-            |i| or(i,
-                whitespace,
-                comments_block
-            ),
-            |i| or(i,
-                comments_one_line,
-                terminating
-            )
-        );
+        skip_many(space_or_tab);
+
+        comments_one_line() <|>
+        __pre_block_comments() <|>
+        terminating();
 
         ret LineToken::PreBlock;
     }
