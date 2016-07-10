@@ -4022,13 +4022,10 @@ fn parse_task_separator<'a>(input: Input<'a, u8>, token: &[u8])
 
 fn comments_one_line(i: Input<u8>) -> U8Result<()> {
     parse!{i;
-        or(
-            |i| string(i, "//".as_bytes()),
-            |i| or(i,
-                |i| string(i, "#".as_bytes()),
-                |i| string(i, ";".as_bytes())
-            )
-        );
+
+        string("//".as_bytes()) <|>
+        string("#".as_bytes()) <|>
+        string(";".as_bytes());
 
         let _line: Vec<u8> = many_till(any, terminating);
         ret ()
