@@ -2914,6 +2914,7 @@ fn task_note(input: Input<u8>) -> U8Result<TaskBlock> {
 
         skip_many(space_or_tab);
 
+        // first line
         let line = or(
             |i| parse!{i;
                 terminating();
@@ -2985,7 +2986,6 @@ fn task_note(input: Input<u8>) -> U8Result<TaskBlock> {
                 }
 
             } else {
-                // format!("{}", line)
                 line.to_owned()
             };
 
