@@ -2658,9 +2658,9 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
             },
             Err(_err) => {
 
-                // println!("{:?}", e);
+                // println!("{:?}", _err);
 
-                // match e {
+                // match _err {
                 //     StreamError::ParseError(input, _) => {
                 //     // ParseError::Error(input, _) => {
                 //         println!("StreamError::ParseError {}",  String::from_utf8_lossy(input));
