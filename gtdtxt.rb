@@ -2,15 +2,15 @@
 require 'formula'
 class Gtdtxt < Formula
   homepage 'https://github.com/gtdtxt/gtdtxt'
-  _ver = '0.11.0'
+  _ver = '0.12.0'
   version _ver
 
   if Hardware.is_64_bit?
     url "https://github.com/gtdtxt/gtdtxt/releases/download/v#{_ver}/gtdtxt-v#{_ver}-x86_64-apple-darwin.tar.gz"
-    sha256 '7ccd81b1a2ff6abff69b9797e9b68a6644074575fe1f14d93d881728192794ad'
+    sha256 '8ac8ef0758385a999787d94d28c0cbb34e4f67c7f3c5d779f3eb76fa48c9df10'
   else
     url "https://github.com/gtdtxt/gtdtxt/releases/download/v#{_ver}/gtdtxt-v#{_ver}-i686-apple-darwin.tar.gz"
-    sha256 '0faa14d99958cec7ba99b06c3e66c304d86e0b5521efde7b04e161ac8bc41cfb'
+    sha256 '13339276e41251b29fcaa46de3a28ac42c0b7964ad5e92eff9a83ea6ee93a32d'
   end
 
   def install
