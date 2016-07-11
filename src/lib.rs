@@ -10,15 +10,14 @@
 
 #[macro_use]
 extern crate version;
-
 #[macro_use]
 extern crate debug_unreachable;
-
 #[macro_use]
 extern crate chomp;
 extern crate chrono;
 extern crate colored;
 extern crate clap;
+extern crate enum_set;
 
 
 use std::path::{Path, PathBuf};
@@ -28,6 +27,9 @@ use std::ascii::{AsciiExt};
 use std::env;
 use std::process;
 use std::marker::PhantomData;
+use std::mem;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 
 use colored::*;
@@ -51,6 +53,9 @@ use chomp::parsers::{string, eof, any, satisfy};
 use chomp::combinators::{option, or, many_till, many, many1, skip_many, skip_many1, look_ahead};
 use chomp::ascii::{is_whitespace, decimal, digit};
 // use chomp::*;
+
+use enum_set::{EnumSet, CLike};
+
 
 #[allow(cyclomatic_complexity)]
 pub fn main() {
@@ -1318,6 +1323,7 @@ type Tags = Vec<String>;
 type Priority = i64;
 type TimeLength = u64;
 
+#[repr(u32)]
 #[derive(Debug, Clone, Eq, PartialEq)]
 enum Status {
     Done,
@@ -1332,6 +1338,17 @@ impl Status {
             Status::Incubate => "Incubate".to_owned(),
             Status::NotDone => "Not Done".to_owned()
         }
+    }
+}
+
+impl CLike for Status {
+    fn to_u32(&self) -> u32 {
+        let foo: Self = self.clone();
+        foo as u32
+    }
+
+    unsafe fn from_u32(v: u32) -> Status {
+        mem::transmute(v)
     }
 }
 
@@ -2606,6 +2623,13 @@ fn parse_file(parent_file: Option<String>, path_to_file_str: String, journal: &m
                             Directive::InjectProjectPrefixDelete => {
                                 directive_switch.inject_project_prefix = None;
                             },
+                            Directive::InjectStatus(result) => {
+                                directive_switch.inject_status =
+                                    Some(LineLocation(tracked_path.clone(), num_of_lines_parsed, result));
+                            },
+                            Directive::InjectStatusDelete => {
+                                directive_switch.inject_status = None;
+                            },
                             Directive::EnsureProjectPrefix(result) => {
                                 directive_switch.ensure_project_prefix =
                                     Some(LineLocation(tracked_path.clone(), num_of_lines_parsed, result));
@@ -3364,6 +3388,8 @@ struct LocalDirectiveSwitches {
     // This injects project path as suffix.
     inject_project_prefix: Option<LineLocation<ProjectPath>>,
 
+    inject_status: Option<LineLocation<(Status, EnumSet<Status>)>>,
+
     /* ensure:... directives */
     ensure_project_prefix: Option<LineLocation<ProjectPath>>,
 }
@@ -3391,6 +3417,8 @@ impl LocalDirectiveSwitches {
 
             inject_project_prefix: None,
 
+            inject_status: None,
+
             /* ensure:... directives */
 
             ensure_project_prefix: None,
@@ -3401,7 +3429,7 @@ impl LocalDirectiveSwitches {
     // If necessary, transform the given task based on the directive switches
     fn transform_task(&self, task: &mut Task, journal: &GTD) {
 
-        // default:status
+        // default.status
         if task.status.is_none() && self.default_status.is_some() {
 
             let status = self.default_status
@@ -3411,7 +3439,7 @@ impl LocalDirectiveSwitches {
             task.status = Some(status.clone());
         }
 
-        // inject:base
+        // inject.project.prefix
         if let Some(ref project_prefix) = self.inject_project_prefix {
 
             let project_prefix: &ProjectPath = project_prefix.as_ref().unwrap();
@@ -3425,7 +3453,24 @@ impl LocalDirectiveSwitches {
             };
         }
 
-        // ensure:project:prefix
+        // inject.status
+        if let Some(ref inject_status) = self.inject_status {
+
+            let &(ref status, ref exclude): &(Status, EnumSet<Status>) = inject_status.as_ref().unwrap();
+
+            let ref task_status = match task.status {
+                None => Status::NotDone,
+                Some(ref status) => status.clone()
+            };
+
+            if !exclude.contains(task_status) {
+                task.status = Some(status.clone());
+            }
+
+        }
+
+        // NOTE: this goes last
+        // ensure.project.prefix
         if let Some(ref project_prefix) = self.ensure_project_prefix {
 
             let required_project_prefix = project_prefix.as_ref().unwrap();
@@ -3598,6 +3643,9 @@ enum Directive {
     InjectProjectPrefix(ProjectPath),
     InjectProjectPrefixDelete,
 
+    InjectStatus((Status, EnumSet<Status>)),
+    InjectStatusDelete,
+
     /* ensure:... directives */
 
     EnsureProjectPrefix(ProjectPath),
@@ -3626,6 +3674,7 @@ fn directives(input: Input<u8>) -> U8Result<LineToken> {
             /* inject:... directives */
 
             directive_inject_project_prefix() <|>
+            directive_inject_status() <|>
 
             /* ensure:... directives */
 
@@ -3826,11 +3875,108 @@ fn directive_inject_project_prefix_delete(input: Input<u8>) -> U8Result<Directiv
         token(b'.');
         string_ignore_case("prefix".as_bytes());
 
-        skip_many(space_or_tab);
-
         let _nothing: Vec<()> = many_till(space_or_tab, terminating);
 
         ret Directive::InjectProjectPrefixDelete
+    }
+}
+
+fn directive_inject_status(input: Input<u8>) -> U8Result<Directive> {
+
+    (parse!{input;
+
+        string_ignore_case("inject".as_bytes());
+        token(b'.');
+        string_ignore_case("status".as_bytes());
+        token(b':');
+
+        skip_many(space_or_tab);
+
+        let status = parse_status();
+
+        let exclude = option(__directive_inject_status_exclude, {
+            let default: EnumSet<Status> = EnumSet::new();
+            default
+        });
+
+        let _nothing: Vec<()> = many_till(space_or_tab, terminating);
+
+        ret {
+            let result: (Status, EnumSet<Status>) = (status, exclude);
+            result
+
+        }
+    }).bind(|i, above: (Status, EnumSet<Status>)| {
+
+        let (inject_status, exclude) = above;
+
+        if exclude.contains(&inject_status) {
+            return i.incomplete(1);
+        } else {
+            let result = Directive::InjectStatus((inject_status, exclude));
+            return i.ret(result);
+        }
+
+    })
+}
+
+fn __directive_inject_status_exclude(input: Input<u8>) -> U8Result<EnumSet<Status>> {
+    parse!{input;
+
+        // < >[but not ]<status[,...]>
+
+        space_or_tab();
+        skip_many(space_or_tab);
+
+        // [but not ]
+        option(|i| parse!{i;
+
+            string_ignore_case("but".as_bytes());
+
+            space_or_tab();
+            skip_many(space_or_tab);
+
+            string_ignore_case("not".as_bytes());
+
+            space_or_tab();
+            skip_many(space_or_tab);
+
+            ret {
+                ()
+            }
+        }, ());
+
+        let result = parse_list_status();
+
+        // skip garbage
+        skip_many(|i| or(i,
+            |i| parse!{i;
+                token(b',');
+                ret {()}
+            },
+            space_or_tab
+        ));
+
+        ret result
+    }
+}
+
+fn directive_inject_status_delete(input: Input<u8>) -> U8Result<Directive> {
+
+    parse!{input;
+
+        string_ignore_case("delete".as_bytes());
+
+        space_or_tab();
+        skip_many(space_or_tab);
+
+        string_ignore_case("inject".as_bytes());
+        token(b'.');
+        string_ignore_case("status".as_bytes());
+
+        let _nothing: Vec<()> = many_till(space_or_tab, terminating);
+
+        ret Directive::InjectStatusDelete
     }
 }
 
@@ -3867,8 +4013,6 @@ fn directive_ensure_project_prefix_delete(input: Input<u8>) -> U8Result<Directiv
         string_ignore_case("project".as_bytes());
         token(b'.');
         string_ignore_case("prefix".as_bytes());
-
-        skip_many(space_or_tab);
 
         let _nothing: Vec<()> = many_till(space_or_tab, terminating);
 
@@ -4049,6 +4193,319 @@ fn comments_block(i: Input<u8>) -> U8Result<()> {
         ret ()
     }
 }
+
+/* list parsers */
+
+fn parse_list_status(input: Input<u8>) -> U8Result<EnumSet<Status>> {
+    parse!{input;
+        let result = parse_list(parse_list_status_delimeter, parse_list_status_reducer);
+        ret result
+    }
+}
+
+fn parse_list_status_delimeter(input: Input<u8>) -> U8Result<()> {
+    parse!{input;
+
+        or(
+            |i| parse!{i;
+                skip_many(space_or_tab);
+                token(b',');
+                ret {()}
+            },
+            space_or_tab
+        );
+
+        skip_many(|i| or(i,
+            |i| parse!{i;
+                token(b',');
+                ret {()}
+            },
+            space_or_tab
+        ));
+
+        ret {()}
+    }
+}
+
+fn parse_list_status_reducer(input: Input<u8>, accumulator: Rc<RefCell<EnumSet<Status>>>) -> U8Result<()> {
+    parse!{input;
+        let status = parse_status();
+        ret {
+            accumulator.borrow_mut().insert(status);
+            ()
+        }
+    }
+}
+
+#[test]
+fn parse_list_status_test() {
+
+    match parse_only(|i| parse_list_status(i), "".as_bytes()) {
+        Ok(_) => {
+            assert!(false);
+        },
+        Err(_) => {
+            assert!(true);
+        }
+    }
+
+    match parse_only(|i| parse_list_status(i), ",,,,".as_bytes()) {
+        Ok(_) => {
+            assert!(false);
+        },
+        Err(_) => {
+            assert!(true);
+        }
+    }
+
+    match parse_only(|i| parse_list_status(i), ",,  ,, active".as_bytes()) {
+        Ok(_) => {
+            assert!(false);
+        },
+        Err(_) => {
+            assert!(true);
+        }
+    }
+
+    match parse_only(|i| parse_list_status(i), "active ,,  ,,,".as_bytes()) {
+        Ok(result) => {
+
+            let mut set: EnumSet<Status> = EnumSet::new();
+            set.insert(Status::NotDone);
+
+            assert_eq!(result, set);
+        },
+        Err(_) => {
+            assert!(true);
+        }
+    }
+
+    match parse_only(|i| parse_list_status(i), "active".as_bytes()) {
+        Ok(result) => {
+
+            let mut set: EnumSet<Status> = EnumSet::new();
+            set.insert(Status::NotDone);
+
+            assert_eq!(result, set);
+        },
+        Err(_) => {
+            assert!(false);
+        }
+    }
+
+    match parse_only(|i| parse_list_status(i), "done,,,,, not done".as_bytes()) {
+        Ok(result) => {
+
+            let mut set: EnumSet<Status> = EnumSet::new();
+            set.insert(Status::NotDone);
+            set.insert(Status::Done);
+
+            assert_eq!(result, set);
+            // println!("{:?}", result);
+            // journal.filter_priority = Some(result);
+        },
+        Err(_) => {
+            assert!(false);
+        }
+    }
+
+    match parse_only(|i| parse_list_status(i), "done    not done".as_bytes()) {
+        Ok(result) => {
+
+            let mut set: EnumSet<Status> = EnumSet::new();
+            set.insert(Status::NotDone);
+            set.insert(Status::Done);
+
+            assert_eq!(result, set);
+            // println!("{:?}", result);
+            // journal.filter_priority = Some(result);
+        },
+        Err(_) => {
+            assert!(false);
+        }
+    }
+}
+
+/* new delimeted list parser */
+
+// TODO: remove
+// list(delim) = status rest(delim) | status
+// rest(delim) = delim status rest(delim) | delim status
+
+// invariant:
+// - item does not consume eof (may lookahead eof to stop)
+// - item does not consume delim (may lookahead delim to stop)
+// - delim does not consume eof
+//
+// list(delim) = item rest(delim) | item
+// rest(delim) = delim item rest(delim) | delim item
+
+fn parse_list<'a, D, Delim: 'a, A, R>(input: Input<'a, u8>, delimeter: D, reducer: R)
+-> U8Result<'a, A>
+    where
+    D: FnOnce(Input<'a, u8>) -> U8Result<'a, Delim> + Copy,
+    R: FnOnce(Input<'a, u8>, Rc<RefCell<A>>) -> U8Result<'a, ()> + Copy,
+    A: Default {
+
+    let accumulator: A = Default::default();
+    let initial_accumulator: Rc<RefCell<A>> = Rc::new(RefCell::new(accumulator));
+
+    or(input,
+        |input| parse!{input;
+
+            reducer(initial_accumulator.clone());
+
+            parse_list_rest(delimeter, initial_accumulator.clone(), reducer);
+
+            ret {
+                Rc::try_unwrap(initial_accumulator)
+                    .ok()
+                    .unwrap()
+                    .into_inner()
+            }
+
+        },
+        |input| {
+            let accumulator: A = Default::default();
+            let initial_accumulator: Rc<RefCell<A>> = Rc::new(RefCell::new(accumulator));
+            parse!{input;
+                reducer(initial_accumulator.clone());
+
+                ret {
+                    Rc::try_unwrap(initial_accumulator)
+                        .ok()
+                        .unwrap()
+                        .into_inner()
+                }
+            }
+        }
+
+    )
+}
+
+fn parse_list_rest<'a, D, Delim: 'a, A, R>(
+    input: Input<'a, u8>,
+    delimeter: D,
+    accumulator: Rc<RefCell<A>>,
+    reducer: R)
+-> U8Result<'a, ()>
+    where
+    D: FnOnce(Input<'a, u8>) -> U8Result<'a, Delim> + Copy,
+    R: FnOnce(Input<'a, u8>, Rc<RefCell<A>>) -> U8Result<'a, ()> + Copy,
+    A: Default {
+
+
+    parse!{input;
+
+        delimeter();
+
+        or(
+            |i| parse!{i;
+                reducer(accumulator.clone());
+                parse_list_rest(delimeter, accumulator.clone(), reducer);
+                ret {
+                    ()
+                }
+            },
+            |i| parse!{i;
+                reducer(accumulator.clone());
+                ret {
+                    ()
+                }
+            }
+        );
+
+        ret {
+            ()
+        }
+    }
+}
+
+// TODO: remove
+
+// fn ___parse_list<'a, F, G, T: 'a, U>(input: Input<'a, u8>, delimeter: F, parse_item: G) -> U8Result<'a, Vec<U>>
+//     where
+//     F: FnOnce(Input<'a, u8>) -> U8Result<'a, T> + Copy,
+//     G: FnOnce(Input<'a, u8>) -> U8Result<'a, U> + Copy {
+
+//     let start_list: Rc<RefCell<Vec<U>>> = Rc::new(RefCell::new(Vec::new()));
+
+//     or(input,
+//         |input| parse!{input;
+
+//             let item: U = parse_item();
+
+//             __parse_list_rest({
+//                 start_list.borrow_mut().push(item);
+
+//                 start_list.clone()
+//             }, delimeter, parse_item);
+
+//             ret {
+//                 Rc::try_unwrap(start_list)
+//                     .ok()
+//                     .unwrap()
+//                     .into_inner()
+//             }
+//         },
+//         |input| parse!{input;
+
+//             let item: U = parse_item();
+//             ret {
+//                 let mut list: Vec<U> = Vec::new();
+//                 list.push(item);
+//                 list
+//             }
+//         }
+//     )
+// }
+
+// fn __parse_list_rest<'a, F, G, T: 'a, U: 'a>(
+//     input: Input<'a, u8>,
+//     current_list: Rc<RefCell<Vec<U>>>,
+//     delimeter: F,
+//     parse_item: G) -> U8Result<'a, ()>
+//     where
+//     F: FnOnce(Input<'a, u8>) -> U8Result<'a, T> + Copy,
+//     G: FnOnce(Input<'a, u8>) -> U8Result<'a, U> + Copy {
+
+//     let current_list_1 = current_list.clone();
+//     let current_list_2 = current_list.clone();
+
+//     parse!{input;
+
+//         delimeter();
+
+//         or(
+//             |i| parse!{i;
+
+//                 let item: U = parse_item();
+
+//                 __parse_list_rest({
+//                     current_list_1.borrow_mut().push(item);
+//                     current_list_1
+//                 }, delimeter, parse_item);
+
+//                 ret {
+//                     ()
+//                 }
+//             },
+//             |i| parse!{i;
+
+//                 let item: U = parse_item();
+
+//                 ret {
+//                     current_list_2.borrow_mut().push(item);
+//                     ()
+//                 }
+//             }
+//         );
+
+//         ret {
+//             ()
+//         }
+//     }
+// }
 
 /* delimited list parser */
 

@@ -8,6 +8,7 @@ dependencies = [
  "clippy 0.0.78 (registry+https://github.com/rust-lang/crates.io-index)",
  "colored 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "debug_unreachable 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "enum-set 0.0.4 (git+https://github.com/contain-rs/enum-set?rev=c6e7daf0de920897389d3418ab01d0a0bc25200a)",
  "version 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -153,6 +154,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "backtrace 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "enum-set"
+version = "0.0.4"
+source = "git+https://github.com/contain-rs/enum-set?rev=c6e7daf0de920897389d3418ab01d0a0bc25200a#c6e7daf0de920897389d3418ab01d0a0bc25200a"
 
 [[package]]
 name = "kernel32-sys"
